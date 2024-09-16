@@ -1,0 +1,6 @@
+email: nextjs16@gmail.com
+pass : nextjsfullstack
+
+Next
+
+mongodb+srv://Next:nextjsfullstack@next.y3425ky.mongodb.net/
