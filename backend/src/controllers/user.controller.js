@@ -4,18 +4,19 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { validatePassword, validateEmail } from "../helpers/test.regex.js";
 import { generateRefreshAndAccessTokens } from "../helpers/generateRefreshAndAccessTokens.js";
+import jwt from "jsonwebtoken";
 
 const accesstokenOptions = {
   httpOnly: true,
   secure: true,
   sameSite: "None",
-  maxAge: process.env.ACCESS_TOKEN_EXPIRY,
+  // maxAge: 60 * 60 * 1000,
 };
 const refreshtokenOptions = {
   httpOnly: true,
   secure: true,
   sameSite: "None",
-  maxAge: process.env.REFRESH_TOKEN_EXPIRY,
+  // maxAge: 24 * 60 * 60 * 1000,
 };
 
 const registerUser = asyncHandler(async (req, res) => {
@@ -97,15 +98,14 @@ const loginUser = asyncHandler(async (req, res) => {
   if (!user) {
     return res.status(404).json(new ApiError(404, "User doesnot exist "));
   }
-  if (!user.isVerified) {
-    return res.status(404).json(new ApiError(404, "User is not verified"));
-  }
+  // if (!user.isVerified) {
+  //   return res.status(404).json(new ApiError(404, "User is not verified"));
+  // }
   if (!password || password.length < 8) {
     return res
       .status(401)
       .json(new ApiError(401, "Password must be at least 8 characters long"));
   }
-
   if (!validatePassword(password)) {
     return res
       .status(403)
@@ -121,16 +121,18 @@ const loginUser = asyncHandler(async (req, res) => {
     return res.status(401).json(new ApiError(401, "Invalid User Cradentials"));
   }
   const { refreshtoken, accesstoken } = await generateRefreshAndAccessTokens(
-    user._id
+    user?._id
   );
-  const User = await User.findById(user._id);
-  const cookies = req?.cookies;
-  let RefreshTokenArray = !cookies?.refreshToken
-    ? User.refreshTokens
-    : User.refreshTokens.filter((rt) => rt !== cookies?.refreshToken);
-  User.refreshTokens = [...RefreshTokenArray, refreshtoken];
-  await User.save({ validateBeforeSave: false });
-  const loggedInUser = await User.findById(user._id).select(
+  const Usr = await User.findById(user?._id);
+  if (!Usr) {
+    return res.status(404).json(new ApiError(404, "User doesnot exist "));
+  }
+  let RefreshTokenArray = !req?.cookies?.refreshToken
+    ? Usr.refreshTokens
+    : Usr.refreshTokens.filter((rt) => rt !== req?.cookies?.refreshToken);
+  Usr.refreshTokens = [...RefreshTokenArray, refreshtoken];
+  await Usr.save({ validateBeforeSave: false });
+  const loggedInUser = await User.findById(Usr?._id).select(
     "-password -refreshTokens"
   );
   return res
@@ -191,9 +193,9 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         await foundUser.save({ validateBeforeSave: false });
         return res.sendStatus(403);
       }
-      if (err || foundUser._id !== decoded._id) {
-        return res.sendStatus(403);
-      }
+      // if (err) {
+      //   return res.sendStatus(403);
+      // }
       const user = await User.findById(decoded?._id);
       if (!user) {
         return res.status(401).json(new ApiError(401, "Invalid refresh token"));
@@ -222,4 +224,16 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   );
 });
 
-export { registerUser };
+const loggedInUser = asyncHandler(async (req, res) => {
+  const loginUser = await User.findById(req.user._id).select(
+    "-password -refreshTokens"
+  );
+  if (!loginUser) {
+    return res.status(400).json(new ApiError(400, "user is not available"));
+  }
+  return res
+    .status(200)
+    .json(new ApiResponse(200, loginUser, "loggedIn user returned"));
+});
+
+export { registerUser, loginUser, refreshAccessToken, loggedInUser };
