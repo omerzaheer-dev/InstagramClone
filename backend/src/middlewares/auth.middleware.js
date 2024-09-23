@@ -5,14 +5,15 @@ import jwt from "jsonwebtoken";
 const jwtVerify = async (req, res, next) => {
   try {
     const Token =
-      req.cookies?.accessToken ||
-      req.header("Authorization")?.replace("Bearer ", "");
+      req?.headers?.authorization?.replace("Bearer ", "") ||
+      req?.headers?.Authorization?.replace("Bearer ", "");
+    // req?.cookies?.accessToken;
     if (!Token) {
-      return res.status(400).json(new ApiError(400, "Token not available"));
+      return res.status(401).json(new ApiError(401, "Token not available"));
     }
     jwt.verify(Token, process.env.ACCESS_TOKEN_SECRET, async (err, decoded) => {
       if (err) {
-        return res.status(403).json(new ApiError(403, "Invalid Token"));
+        return res.sendStatus(403);
       }
       const user = await User.findById(decoded._id).select(
         "-password -refreshTokens"
@@ -24,7 +25,9 @@ const jwtVerify = async (req, res, next) => {
       next();
     });
   } catch (error) {
-    return res.status(409).json(new ApiError(409, "invalid access token"));
+    return res
+      .status(409)
+      .json(new ApiError(409, `invalid access token ${error}`));
   }
 };
 const IsAdmin = async (req, res, next) => {

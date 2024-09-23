@@ -4,20 +4,11 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { validatePassword, validateEmail } from "../helpers/test.regex.js";
 import { generateRefreshAndAccessTokens } from "../helpers/generateRefreshAndAccessTokens.js";
+import {
+  accesstokenOptions,
+  refreshtokenOptions,
+} from "../utils/AccessRefreshTokenOptions.js";
 import jwt from "jsonwebtoken";
-
-const accesstokenOptions = {
-  httpOnly: true,
-  secure: true,
-  sameSite: "None",
-  // maxAge: 60 * 60 * 1000,
-};
-const refreshtokenOptions = {
-  httpOnly: true,
-  secure: true,
-  sameSite: "None",
-  // maxAge: 24 * 60 * 60 * 1000,
-};
 
 const registerUser = asyncHandler(async (req, res) => {
   const { username, email, password, confirmPassword } = req.body;
@@ -130,35 +121,45 @@ const loginUser = asyncHandler(async (req, res) => {
   let RefreshTokenArray = !req?.cookies?.refreshToken
     ? Usr.refreshTokens
     : Usr.refreshTokens.filter((rt) => rt !== req?.cookies?.refreshToken);
+  if (req?.cookies?.refreshToken) {
+    const foundToken = await User.findOne({
+      refreshTokens: req?.cookies?.refreshToken,
+    }).exec();
+    if (!foundToken) {
+      console.log("attempted refresh token reuse at login!");
+      RefreshTokenArray = [];
+    }
+    res.clearCookie("refreshToken", refreshtokenOptions);
+  }
   Usr.refreshTokens = [...RefreshTokenArray, refreshtoken];
   await Usr.save({ validateBeforeSave: false });
   const loggedInUser = await User.findById(Usr?._id).select(
     "-password -refreshTokens"
   );
-  return res
-    .status(200)
-    .cookie("accessToken", accesstoken, accesstokenOptions)
-    .cookie("refreshToken", refreshtoken, refreshtokenOptions)
-    .json(
-      new ApiResponse(
-        200,
-        {
-          user: loggedInUser,
-          accesstoken,
-          refreshtoken,
-        },
-        "User logged in successfully"
+  return (
+    res
+      .status(200)
+      // .cookie("accessToken", accesstoken, accesstokenOptions)
+      .cookie("refreshToken", refreshtoken, refreshtokenOptions)
+      .json(
+        new ApiResponse(
+          200,
+          {
+            user: loggedInUser,
+            accesstoken,
+          },
+          "User logged in successfully"
+        )
       )
-    );
+  );
 });
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
-  const incommingRefreshToken =
-    req?.cookies?.refreshToken || req?.body?.refreshtoken;
+  const incommingRefreshToken = req?.cookies?.refreshToken;
   if (!incommingRefreshToken) {
     return res.status(401).json(new ApiError(401, "No refresh token"));
   }
-  res.clearCookie("accessToken", accesstokenOptions);
+  // res.clearCookie("accessToken", accesstokenOptions);
   res.clearCookie("refreshToken", refreshtokenOptions);
   const foundUser = await User.findOne({
     refreshTokens: incommingRefreshToken,
@@ -175,8 +176,8 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
             .status(401)
             .json(new ApiError(401, "Invalid refresh token"));
         }
-        User.refreshTokens = [];
-        await User.save({ validateBeforeSave: false });
+        hackedUser.refreshTokens = [];
+        await hackedUser.save({ validateBeforeSave: false });
       }
     );
     return res.sendStatus(403);
@@ -191,11 +192,10 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       if (err) {
         foundUser.refreshTokens = [...newRefreshTokenArray];
         await foundUser.save({ validateBeforeSave: false });
+      }
+      if (err || foundUser.username !== decoded.username) {
         return res.sendStatus(403);
       }
-      // if (err) {
-      //   return res.sendStatus(403);
-      // }
       const user = await User.findById(decoded?._id);
       if (!user) {
         return res.status(401).json(new ApiError(401, "Invalid refresh token"));
@@ -209,17 +209,13 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         await generateRefreshAndAccessTokens(user._id);
       user.refreshTokens = [...newRefreshTokenArray, refreshtoken];
       await user.save({ validateBeforeSave: false });
-      return res
-        .status(200)
-        .cookie("accessToken", accesstoken, accesstokenOptions)
-        .cookie("refreshToken", refreshtoken, refreshtokenOptions)
-        .json(
-          new ApiResponse(
-            200,
-            { accesstoken, refreshtoken },
-            "Access Token Refreshed"
-          )
-        );
+      return (
+        res
+          .status(200)
+          // .cookie("accessToken", accesstoken, accesstokenOptions)
+          .cookie("refreshToken", refreshtoken, refreshtokenOptions)
+          .json(new ApiResponse(200, { accesstoken }, "Access Token Refreshed"))
+      );
     }
   );
 });
@@ -236,4 +232,37 @@ const loggedInUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, loginUser, "loggedIn user returned"));
 });
 
+const loggOutUser = asyncHandler(async (req, res) => {
+  const cookies = req?.cookies;
+  if (!cookies?.refreshToken) {
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          loginUser,
+          "User is already LoggedOut no refresh token is present in cookies"
+        )
+      );
+  }
+  const refreshToken = cookies.refreshToken;
+  const foundUser = await User.findOne({ refreshTokens: refreshToken }).exec();
+  if (!foundUser) {
+    res.clearCookie("refreshToken", refreshtokenOptions);
+    return res.sendStatus(204);
+  }
+  foundUser.refreshTokens = foundUser.refreshTokens.filter(
+    (rt) => rt !== refreshToken
+  );
+  const result = await foundUser.save({ validateBeforeSave: false });
+  if (!result) {
+    return res
+      .status(401)
+      .json(new ApiError(401, "Something went wrong while logging out"));
+  }
+  res.clearCookie("refreshToken", refreshtokenOptions);
+  return res
+    .status(200)
+    .json(new ApiResponse(200, loginUser, "User LoggedOut successfuly"));
+});
 export { registerUser, loginUser, refreshAccessToken, loggedInUser };
