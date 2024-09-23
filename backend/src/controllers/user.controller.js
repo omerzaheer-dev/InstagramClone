@@ -99,10 +99,10 @@ const loginUser = asyncHandler(async (req, res) => {
   }
   if (!validatePassword(password)) {
     return res
-      .status(403)
+      .status(408)
       .json(
         new ApiError(
-          403,
+          408,
           "password contains at least one special character and number also"
         )
       );
@@ -248,8 +248,10 @@ const loggOutUser = asyncHandler(async (req, res) => {
   const refreshToken = cookies.refreshToken;
   const foundUser = await User.findOne({ refreshTokens: refreshToken }).exec();
   if (!foundUser) {
-    res.clearCookie("refreshToken", refreshtokenOptions);
-    return res.sendStatus(204);
+    return res
+      .status(200)
+      .clearCookie("refreshToken", refreshtokenOptions)
+      .json(new ApiResponse(200, {}, "User is already LoggedOut"));
   }
   foundUser.refreshTokens = foundUser.refreshTokens.filter(
     (rt) => rt !== refreshToken
@@ -260,9 +262,89 @@ const loggOutUser = asyncHandler(async (req, res) => {
       .status(401)
       .json(new ApiError(401, "Something went wrong while logging out"));
   }
-  res.clearCookie("refreshToken", refreshtokenOptions);
   return res
     .status(200)
+    .clearCookie("refreshToken", refreshtokenOptions)
     .json(new ApiResponse(200, {}, "User LoggedOut successfuly"));
 });
-export { registerUser, loginUser, refreshAccessToken, loggedInUser };
+const changeCurrentPassword = asyncHandler(async (req, res) => {
+  const { oldPassword, newPassword, confirmPassword } = req.body;
+  if (!oldPassword || !newPassword || !confirmPassword) {
+    return res.status(400).json(new ApiError(400, "All fields are required"));
+  }
+  if (!oldPassword || oldPassword.length < 8) {
+    return res
+      .status(401)
+      .json(
+        new ApiError(401, "Old Password must be at least 8 characters long")
+      );
+  }
+  if (!validatePassword(oldPassword)) {
+    return res
+      .status(408)
+      .json(
+        new ApiError(
+          408,
+          "Old password contains at least one special character and number also"
+        )
+      );
+  }
+  if (newPassword !== confirmPassword) {
+    return res
+      .status(401)
+      .json(
+        new ApiError(401, "new password and confirm password does not match")
+      );
+  }
+  if (!newPassword || newPassword.length < 8) {
+    return res
+      .status(401)
+      .json(
+        new ApiError(401, "New Password must be at least 8 characters long")
+      );
+  }
+  if (!validatePassword(newPassword)) {
+    return res
+      .status(408)
+      .json(
+        new ApiError(
+          408,
+          "New password contains at least one special character and number also"
+        )
+      );
+  }
+  if (!confirmPassword || confirmPassword.length < 8) {
+    return res
+      .status(401)
+      .json(
+        new ApiError(401, "New Password must be at least 8 characters long")
+      );
+  }
+  if (!validatePassword(confirmPassword)) {
+    return res
+      .status(408)
+      .json(
+        new ApiError(
+          408,
+          "Confirm password contains at least one special character and number also"
+        )
+      );
+  }
+  const user = await User.findById(req?.user?._id);
+  const ValidatePassword = await user.isPasswordValid(oldPassword);
+  if (!ValidatePassword) {
+    return res.status(400).json(new ApiError(400, "invalid oldPassword"));
+  }
+  user.password = newPassword;
+  await user.save();
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "password changed successfully"));
+});
+export {
+  registerUser,
+  loginUser,
+  refreshAccessToken,
+  loggedInUser,
+  loggOutUser,
+};
