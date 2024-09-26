@@ -6,6 +6,7 @@ import {
   validatePassword,
   validateEmail,
   validateOtp,
+  validateUserName
 } from "../helpers/test.regex.js";
 import { generateRefreshAndAccessTokens } from "../helpers/generateRefreshAndAccessTokens.js";
 import {
@@ -88,6 +89,11 @@ const loginUser = asyncHandler(async (req, res) => {
       .status(400)
       .json(new ApiError(400, "username and email is required"));
   }
+  if (!validateEmail(emailUsername) && !validateUserName(emailUsername)) {
+    return res
+      .status(400)
+      .json(new ApiError(400, "Invalid email or username format"));
+  }
   const user = await User.findOne({
     $or: [{ email: emailUsername }, { username: emailUsername }],
   });
@@ -139,7 +145,7 @@ const loginUser = asyncHandler(async (req, res) => {
   Usr.refreshTokens = [...RefreshTokenArray, refreshtoken];
   await Usr.save({ validateBeforeSave: false });
   const loggedInUser = await User.findById(Usr?._id).select(
-    "-password -refreshTokens"
+    "-password -refreshTokens -resetPasswordToken -resetPasswordTokenExpiry -createdAt -updatedAt"
   );
   return (
     res
@@ -295,9 +301,13 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
     return res.status(401).json(new ApiError(401, "Somethin is wrong"));
   }
   const user = await User.findById(req?.user?._id);
-  const ValidatePassword = await user.isPasswordValid(oldPassword);
-  if (!ValidatePassword) {
+  const ValidateOldPassword = await user.isPasswordValid(oldPassword);
+  if (!ValidateOldPassword) {
     return res.status(400).json(new ApiError(400, "invalid oldPassword"));
+  }
+  const ValidateNewPassword = await user.isPasswordValid(newPassword);
+  if (ValidateNewPassword) {
+    return res.status(401).json(new ApiError(401, "New Password cannot be the same as previous one"));
   }
   user.password = newPassword;
   await user.save({ validateBeforeSave: false });
@@ -338,6 +348,53 @@ const verifyEmailByOtp = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, {}, "User is verified successfully"));
 });
+const resetPasswordByVerificationLink = asyncHandler(async (req, res) => {
+  const { password, confirmPassword, resetPasswordToken } = req.body;
+  if (!password || !confirmPassword || !resetPasswordToken) {
+    return res.status(400).json(new ApiError(400, "All fields are required"));
+  }
+  if (password !== confirmPassword) {
+    return res
+      .status(401)
+      .json(
+        new ApiError(401, "password and confirm password does not match")
+      );
+  }
+  if (password.length < 8 || !validatePassword(password)) {
+    return res
+      .status(401)
+      .json(
+        new ApiError(401, "password not valid")
+      );
+  }
+  if (confirmPassword.length < 8 || !validatePassword(confirmPassword)) {
+    return res.status(401).json(new ApiError(401, "confirm psaaword not valid"));
+  }
+  const userDetails = await User.findOne({resetPasswordToken});
+  console.log("userDetails",userDetails)
+  if (!userDetails || userDetails.resetPasswordToken==="") {
+    return res
+      .status(400)
+      .json(new ApiError(400, "User doesnot exist or token is used"));
+  }
+  const currentTime = Date.now();
+  if (currentTime > userDetails.resetPasswordTokenExpiry) {
+    return res
+      .status(400)
+      .json(new ApiError(400, "reset password link has been expired"));
+  }
+  const ValidatePassword = await userDetails.isPasswordValid(password);
+  if (ValidatePassword) {
+    return res.status(401).json(new ApiError(401, "Password cannot be the same as previous one"));
+  }
+  userDetails.password=password;
+  userDetails.resetPasswordToken="";
+  userDetails.refreshTokens=[];
+  await userDetails.save({ validateBeforeSave: false });
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Password reset successful"));
+});
 export {
   registerUser,
   loginUser,
@@ -346,4 +403,5 @@ export {
   loggOutUser,
   changeCurrentPassword,
   verifyEmailByOtp,
+  resetPasswordByVerificationLink
 };
