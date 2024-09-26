@@ -4,3 +4,6 @@ pass : nextjsfullstack
 Next
 
 mongodb+srv://Next:nextjsfullstack@next.y3425ky.mongodb.net/
+
+App Name: Authentication
+password : cthd cput idvf rhlz

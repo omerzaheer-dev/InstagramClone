@@ -2,13 +2,18 @@ import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { validatePassword, validateEmail } from "../helpers/test.regex.js";
+import {
+  validatePassword,
+  validateEmail,
+  validateOtp,
+} from "../helpers/test.regex.js";
 import { generateRefreshAndAccessTokens } from "../helpers/generateRefreshAndAccessTokens.js";
 import {
   accesstokenOptions,
   refreshtokenOptions,
 } from "../utils/AccessRefreshTokenOptions.js";
 import jwt from "jsonwebtoken";
+import { Otp } from "../models/otp.model.js";
 
 const registerUser = asyncHandler(async (req, res) => {
   const { username, email, password, confirmPassword } = req.body;
@@ -272,23 +277,6 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
   if (!oldPassword || !newPassword || !confirmPassword) {
     return res.status(400).json(new ApiError(400, "All fields are required"));
   }
-  if (!oldPassword || oldPassword.length < 8) {
-    return res
-      .status(401)
-      .json(
-        new ApiError(401, "Old Password must be at least 8 characters long")
-      );
-  }
-  if (!validatePassword(oldPassword)) {
-    return res
-      .status(408)
-      .json(
-        new ApiError(
-          408,
-          "Old password contains at least one special character and number also"
-        )
-      );
-  }
   if (newPassword !== confirmPassword) {
     return res
       .status(401)
@@ -296,39 +284,15 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
         new ApiError(401, "new password and confirm password does not match")
       );
   }
-  if (!newPassword || newPassword.length < 8) {
-    return res
-      .status(401)
-      .json(
-        new ApiError(401, "New Password must be at least 8 characters long")
-      );
-  }
-  if (!validatePassword(newPassword)) {
-    return res
-      .status(408)
-      .json(
-        new ApiError(
-          408,
-          "New password contains at least one special character and number also"
-        )
-      );
-  }
-  if (!confirmPassword || confirmPassword.length < 8) {
-    return res
-      .status(401)
-      .json(
-        new ApiError(401, "New Password must be at least 8 characters long")
-      );
-  }
-  if (!validatePassword(confirmPassword)) {
-    return res
-      .status(408)
-      .json(
-        new ApiError(
-          408,
-          "Confirm password contains at least one special character and number also"
-        )
-      );
+  if (
+    oldPassword.length < 8 ||
+    !validatePassword(oldPassword) ||
+    newPassword.length < 8 ||
+    !validatePassword(newPassword) ||
+    confirmPassword.length < 8 ||
+    !validatePassword(confirmPassword)
+  ) {
+    return res.status(401).json(new ApiError(401, "Somethin is wrong"));
   }
   const user = await User.findById(req?.user?._id);
   const ValidatePassword = await user.isPasswordValid(oldPassword);
@@ -336,10 +300,43 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
     return res.status(400).json(new ApiError(400, "invalid oldPassword"));
   }
   user.password = newPassword;
-  await user.save();
+  await user.save({ validateBeforeSave: false });
   return res
     .status(200)
     .json(new ApiResponse(200, {}, "password changed successfully"));
+});
+const verifyEmailByOtp = asyncHandler(async (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) {
+    return res.status(400).json(new ApiError(400, "Email and otp is required"));
+  }
+  if (!validateOtp(otp)) {
+    return res
+      .status(400)
+      .json(new ApiError(400, "OTP must be a 4-digit number"));
+  }
+  const user = await User.findOne({ email });
+  if (!user || user?.isVerified === true) {
+    return res
+      .status(400)
+      .json(new ApiError(400, "User doesnot exist or already verified"));
+  }
+  const OtpModel = await Otp.find({ email }).sort({ createdAt: -1 }).limit(1);
+  if (OtpModel.length === 0 || !OtpModel) {
+    return res
+      .status(400)
+      .json(new ApiError(400, "Otp doesnot exist in database"));
+  }
+  if (OtpModel[0].otp !== otp || OtpModel[0].used === true) {
+    return res
+      .status(400)
+      .json(new ApiError(400, "Invalid Otp or otp is used"));
+  }
+  await User.updateOne({ email }, { isVerified: true });
+  await Otp.deleteMany({ email });
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "User is verified successfully"));
 });
 export {
   registerUser,
@@ -347,4 +344,6 @@ export {
   refreshAccessToken,
   loggedInUser,
   loggOutUser,
+  changeCurrentPassword,
+  verifyEmailByOtp,
 };

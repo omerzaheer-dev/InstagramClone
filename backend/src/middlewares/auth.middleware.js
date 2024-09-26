@@ -7,7 +7,7 @@ const jwtVerify = async (req, res, next) => {
     const Token =
       req?.headers?.authorization?.replace("Bearer ", "") ||
       req?.headers?.Authorization?.replace("Bearer ", "");
-    // req?.cookies?.accessToken;
+      // req?.cookies?.accessToken;
     if (!Token) {
       return res.status(401).json(new ApiError(401, "Token not available"));
     }
