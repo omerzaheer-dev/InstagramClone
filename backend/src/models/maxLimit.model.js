@@ -5,19 +5,7 @@ const MaxLimitReachSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
   },
-  otpRequests:{
-    type:Number,
-    default:0
-  },
-  otpRequestsTimestamp:{
-    type: Date,
-  },
-  LinkRequests:{
-    type:Number,
-    default:0
-  },
-  LinkRequestsTimestamp:{
-    type: Date,
-  }
+  otpRequestsTimestamp: { type: [Date], default: [] },
+  LinkRequestsTimestamp: { type: [Date], default: [] },
 });
 export const MaxLimit = mongoose.model("MaxLimit", MaxLimitReachSchema);
