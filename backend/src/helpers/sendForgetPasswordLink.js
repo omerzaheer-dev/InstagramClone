@@ -5,7 +5,6 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { mailSender } from "../utils/mailSender.js";
 import {validateEmail} from "../helpers/test.regex.js";
 import crypto from "crypto"
-
 const sendForgetPasswordLink = asyncHandler(async (req, res) => {
   const { email } = req.body;
   if (!email) {
@@ -18,7 +17,14 @@ const sendForgetPasswordLink = asyncHandler(async (req, res) => {
   if(!checkUserPresent){
     return res.status(400).json(new ApiError(400, "User not found"))
   }
-  const resetPasswordToken = crypto.randomBytes(20).toString("hex"); 
+  let resetPasswordToken;
+  let user
+  resetPasswordToken = crypto.randomBytes(20).toString("hex"); 
+  user = await User.findOne({resetPasswordToken})
+  while(user){
+    resetPasswordToken = crypto.randomBytes(20).toString("hex");
+    user = await User.findOne({resetPasswordToken})
+  }
   const updateUser = await User.findOneAndUpdate(
     {email},
     {

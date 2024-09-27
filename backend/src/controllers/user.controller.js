@@ -25,9 +25,11 @@ const registerUser = asyncHandler(async (req, res) => {
   ) {
     return res.status(409).json(new ApiError(400, "All fields are required"));
   }
-
   if (!validateEmail(email)) {
     return res.status(407).json(new ApiError(407, "email is not valid"));
+  }
+  if (!validateUserName(username)) {
+    return res.status(407).json(new ApiError(407, "username is not valid"));
   }
 
   if (password !== confirmPassword) {
@@ -137,7 +139,6 @@ const loginUser = asyncHandler(async (req, res) => {
       refreshTokens: req?.cookies?.refreshToken,
     }).exec();
     if (!foundToken) {
-      console.log("attempted refresh token reuse at login!");
       RefreshTokenArray = [];
     }
     res.clearCookie("refreshToken", refreshtokenOptions);
@@ -305,8 +306,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
   if (!ValidateOldPassword) {
     return res.status(400).json(new ApiError(400, "invalid oldPassword"));
   }
-  const ValidateNewPassword = await user.isPasswordValid(newPassword);
-  if (ValidateNewPassword) {
+  if (newPassword===oldPassword) {
     return res.status(401).json(new ApiError(401, "New Password cannot be the same as previous one"));
   }
   user.password = newPassword;
@@ -342,7 +342,7 @@ const verifyEmailByOtp = asyncHandler(async (req, res) => {
       .status(400)
       .json(new ApiError(400, "Invalid Otp or otp is used"));
   }
-  await User.updateOne({ email }, { isVerified: true });
+  await User.findOneAndUpdate({ email }, { isVerified: true },{new:true});
   await Otp.deleteMany({ email });
   return res
     .status(200)
@@ -372,10 +372,10 @@ const resetPasswordByVerificationLink = asyncHandler(async (req, res) => {
   }
   const userDetails = await User.findOne({resetPasswordToken});
   console.log("userDetails",userDetails)
-  if (!userDetails || userDetails.resetPasswordToken==="") {
+  if (!userDetails) {
     return res
       .status(400)
-      .json(new ApiError(400, "User doesnot exist or token is used"));
+      .json(new ApiError(400, "User doesnot exist"));
   }
   const currentTime = Date.now();
   if (currentTime > userDetails.resetPasswordTokenExpiry) {
