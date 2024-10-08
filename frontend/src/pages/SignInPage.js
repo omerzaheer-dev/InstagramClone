@@ -1,5 +1,6 @@
 import React ,{useEffect, useRef , useState } from 'react';
-import { useNavigate , useLocation } from 'react-router-dom';
+import { useNavigate , useLocation, Navigate } from 'react-router-dom';
+import useSendOtpEmail from '../hooks/useSendOtpEmail';
 import useToggle from '../hooks/useToggle';
 import useInput from '../hooks/useInput';
 import useAuth from '../hooks/useAuth';
@@ -26,12 +27,13 @@ const schema = z.object({
 });
 
 const SignInPage = () => {
+  const sendOtp = useSendOtpEmail();
   const [emailUsername, emailUsernameResetUser,emailUsernameAttributeObj] = useInput('emailUsername','');
   const [passwordSignIn, passwordSignInResetUser,passwordSignInAttributeObj] = useInput('passwordSignIn','');
   const [check,toggleCheck] = useToggle('persist',false);
   const location = useLocation()
   const navigate = useNavigate()
-  const from = location?.state?.from?.pathname || "/";
+  let from = location?.state?.from?.pathname || "/";
   const {setAuth,auth} = useAuth()
     const errorRef = useRef();
     const [errMsg,setErrMsg] = useState('');
@@ -43,6 +45,11 @@ const SignInPage = () => {
       passwordSignIn: passwordSignIn
     }
   });
+  useEffect(()=>{
+    if(auth?._id){
+      navigate(-1, { replace: true });
+    }
+  },[])
   // const togglePersist = () => {
   //   setPersist(prev => !prev)
   // }
@@ -66,6 +73,10 @@ const SignInPage = () => {
         const accesstoken=response?.data?.data?.accesstoken;
         const {username,role,isVerified,email,_id}=response?.data?.data?.user;
         setAuth({username,role,isVerified,email,accesstoken,_id})
+        if(!isVerified){
+          from = "/unverified"
+          await sendOtp(email);
+        }
         navigate(from,{replace:true})
     } catch (error) {
         if(!error.response){
@@ -85,7 +96,8 @@ const SignInPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black">
+    <div>
+        <div className="min-h-screen flex items-center justify-center bg-black">
       <div className="bg-black p-8 rounded-lg shadow-lg w-full max-w-md">
         <h2 className="text-3xl font-bold text-white mb-6">Sign In</h2>
         <label ref={errorRef} className={errMsg ? "block text-red-600 text-lg":"offscreen"}>{errMsg}</label>
@@ -124,6 +136,7 @@ const SignInPage = () => {
           </button>
         </form>
       </div>
+        </div>
     </div>
   );
 };

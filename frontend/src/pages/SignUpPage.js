@@ -1,4 +1,6 @@
-import React ,{useRef , useEffect , useState , useContext} from 'react';
+import React ,{useRef , useState , useContext, useEffect} from 'react';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import useSendOtpEmail from '../hooks/useSendOtpEmail';
 import AuthContext from "../context/AuthProvider" 
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -31,7 +33,11 @@ const schema = z.object({
 });
 
 const SignUp = () => {
-  const {setAuth} = useContext(AuthContext)
+  const {setAuth,auth} = useContext(AuthContext)
+  const sendOtp = useSendOtpEmail();
+  const location = useLocation()
+  let from = location?.state?.from?.pathname || "/";
+  const navigate = useNavigate()
     // const userRef = useRef()
     const errorRef = useRef()
     const [errMsg,setErrMsg] = useState('')
@@ -40,35 +46,63 @@ const SignUp = () => {
     mode:"all",
   });
 
-  const onSubmit = async(data) => {
-    const {username,email,password,confirmPassword}=data;
+  //   const {username,email,password,confirmPassword} = data;
+  //   try {
+  //     setErrMsg("")
+  //       const response = await axios.post('/api/v1/users/register',
+  //         JSON.stringify({
+  //           password,confirmPassword,email,username
+  //         }),{
+  //           headers:{'Content-Type':'application/json'},
+  //           withCredentials:true
+  //         }
+  //       )
+  //       console.log("aaa",response)
+  //       const accesstoken=response?.data?.data?.accesstoken;
+  //       const {username,role,isVerified,email,_id}=response?.data?.data?.user;
+  //       setAuth({username,role,isVerified,email,accesstoken,_id})
+  //       // await sendOtp(email)
+  //       // navigate("/unverified")
+  //   } catch (error) {
+  //       if(!error.response){
+  //         setErrMsg("no server response")
+  //       }else if(error.response.status===409){
+  //         setErrMsg("User with email or username already exists")
+  //       }else{
+  //         setErrMsg("Registration Failed")
+  //       }
+  //   }
+  // };
+  const onSubmit = async(data)=>{
+    const {confirmPassword,email,password,username} = data;
     try {
       setErrMsg("")
-        const response = await axios.post('/api/v1/users/register',
-          JSON.stringify({
-            username,email,password,confirmPassword
+      const response = await axios.post('/api/v1/users/register',
+        JSON.stringify({
+          password,confirmPassword,email,username
           }),{
             headers:{'Content-Type':'application/json'},
             withCredentials:true
-          }
-        )
-        console.log("aaa",response)
-        const accesstoken=response?.data?.data?.accesstoken;
-        const {username,role,isVerified,email,_id}=response?.data?.data?.user;
-        setAuth({username,role,isVerified,email,accesstoken,_id})
+          })
+          const {role,isVerified,_id}=response?.data?.data?.user;
+          const accesstoken=response?.data?.data?.accesstoken;
+          setAuth({username,role,isVerified,email,accesstoken,_id})
+          await sendOtp(email);
+          navigate("/unverified");
     } catch (error) {
-        if(!error.response){
-          setErrMsg("no server response")
-        }else if(error.response.status===409){
-          setErrMsg("User with email or username already exists")
-        }else{
-          setErrMsg("Registration Failed")
-        }
+      if(!error.response){
+        setErrMsg("no server response")
+      }else if(error.response.status===409){
+        setErrMsg("User with email or username already exists")
+      }else{
+        setErrMsg("Registration Failed")
+      }
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black">
+    <div>
+        <div className="min-h-screen flex items-center justify-center bg-black">
       <div className="bg-black p-8 rounded-lg shadow-lg w-full max-w-md">
         <h2 className="text-3xl font-bold text-white mb-6">Sign Up</h2>
         <label ref={errorRef} className={errMsg ? "block text-red-600 text-lg":"offscreen"}>{errMsg}</label>
@@ -115,6 +149,7 @@ const SignUp = () => {
           </button>
         </form>
       </div>
+        </div>
     </div>
   );
 };

@@ -258,7 +258,7 @@ const loggOutUser = asyncHandler(async (req, res) => {
         new ApiResponse(
           200,
           loginUser,
-          "User is already LoggedOut no refresh token is present in cookies"
+          "User is already LoggedOut no refresh tokena is present in cookies"
         )
       );
   }
@@ -323,15 +323,15 @@ const verifyEmailByOtp = asyncHandler(async (req, res) => {
     throw new ApiError(400, "OTP must be a 4-digit number")
   }
   const user = await User.findOne({ email });
-  if (!user || user?.isVerified === true) {
-    throw new ApiError(400, "User doesnot exist or already verified")
+  if (!user || user?.isVerified === true || !user?.role.includes("unverified")) {
+    throw new ApiError(401, "User doesnot exist or already verified")
   }
   const OtpModel = await Otp.find({ email }).sort({ createdAt: -1 }).limit(1);
   if (OtpModel.length === 0 || !OtpModel) {
-    throw new ApiError(400, "Otp doesnot exist in database")
+    throw new ApiError(402, "Otp doesnot exist in database")
   }
   if (OtpModel[0].otp !== otp || OtpModel[0].used === true) {
-    throw new ApiError(400, "Invalid Otp or otp is used")
+    throw new ApiError(403, "Invalid Otp or otp is used")
   }
   await User.findOneAndUpdate({ email }, { isVerified: true,role:["user"] },{new:true});
   await Otp.deleteMany({ email });
