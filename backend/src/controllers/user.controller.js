@@ -34,8 +34,8 @@ const registerUser = asyncHandler(async (req, res) => {
 
   if (password !== confirmPassword) {
     return res
-      .status(403)
-      .json(new ApiError(403, "Password and confirmPassword dosent match"));
+      .status(405)
+      .json(new ApiError(405, "Password and confirmPassword dosent match"));
   }
 
   if (!password || password.length < 8) {
@@ -46,10 +46,10 @@ const registerUser = asyncHandler(async (req, res) => {
 
   if (!validatePassword(password)) {
     return res
-      .status(403)
+      .status(406)
       .json(
         new ApiError(
-          403,
+          406,
           "password contains at least one special character and number also"
         )
       );
@@ -71,7 +71,7 @@ const registerUser = asyncHandler(async (req, res) => {
     username: username.toLowerCase(),
   });
 
-  const createdUser = await User.findById(user._id).select("-password");
+  const createdUser = await User.findById(user._id).select("-createdAt -updatedAt -password -refreshTokens -resetPasswordToken -resetPasswordTokenExpiry");
 
   if (!createdUser) {
     return res
@@ -79,9 +79,40 @@ const registerUser = asyncHandler(async (req, res) => {
       .json(new ApiError(500, "Somthing went wrong while registering user"));
   }
 
+
+  const { refreshtoken, accesstoken } = await generateRefreshAndAccessTokens(
+    createdUser?._id
+  );
+  const Usr = await User.findById(createdUser?._id);
+  if (!Usr) {
+    return res.status(404).json(new ApiError(404, "User doesnot exist "));
+  }
+  if (req?.cookies?.refreshToken) {
+    const foundToken = await User.findOne({
+      refreshTokens: req?.cookies?.refreshToken,
+    }).exec();
+    if (foundToken) {
+      let RefreshTokenArray=foundToken.refreshTokens.filter((rt) => rt !== req?.cookies?.refreshToken);
+      foundToken.refreshTokens = RefreshTokenArray
+      await foundToken.save({ validateBeforeSave: false });
+    }
+    res.clearCookie("refreshToken", refreshtokenOptions);
+  }
+  Usr.refreshTokens = [refreshtoken];
+  await Usr.save({ validateBeforeSave: false });
+  const loggedInUser = await User.findById(Usr?._id).select(
+    "-password -refreshTokens -resetPasswordToken -resetPasswordTokenExpiry -createdAt -updatedAt"
+  );
+
   return res
-    .status(201)
-    .json(new ApiResponse(200, createdUser, "User registered successfully"));
+    .status(200)
+    .cookie("refreshToken", refreshtoken, refreshtokenOptions)
+    .json(new ApiResponse(200,
+      {
+        user: loggedInUser,
+        accesstoken,
+      },
+      "User registered successfully"));
 });
 
 const loginUser = asyncHandler(async (req, res) => {
@@ -93,14 +124,14 @@ const loginUser = asyncHandler(async (req, res) => {
   }
   if (!validateEmail(emailUsername) && !validateUserName(emailUsername)) {
     return res
-      .status(400)
-      .json(new ApiError(400, "Invalid email or username format"));
+      .status(401)
+      .json(new ApiError(401, "Invalid email or username format"));
   }
   const user = await User.findOne({
     $or: [{ email: emailUsername }, { username: emailUsername }],
   });
   if (!user) {
-    return res.status(404).json(new ApiError(404, "User doesnot exist "));
+    return res.status(402).json(new ApiError(402, "User doesnot exist "));
   }
   // if (!user.isVerified) {
   //   return res.status(404).json(new ApiError(404, "User is not verified"));
@@ -122,7 +153,7 @@ const loginUser = asyncHandler(async (req, res) => {
   }
   const ValidatePassword = await user.isPasswordValid(password);
   if (!ValidatePassword) {
-    return res.status(401).json(new ApiError(401, "Invalid User Cradentials"));
+    return res.status(403).json(new ApiError(403, "Invalid User Cradentials"));
   }
   const { refreshtoken, accesstoken } = await generateRefreshAndAccessTokens(
     user?._id
@@ -208,25 +239,31 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       if (err || foundUser.username !== decoded.username) {
         return res.sendStatus(403);
       }
-      const user = await User.findById(decoded?._id);
-      if (!user) {
+      const usr = await User.findById(decoded?._id);
+      if (!usr) {
         return res.status(401).json(new ApiError(401, "Invalid refresh token"));
       }
-      if (!user.refreshTokens.includes(incommingRefreshToken)) {
+      if (!usr.refreshTokens.includes(incommingRefreshToken)) {
         return res
           .status(401)
           .json(new ApiError(401, "Refresh token is expired or used"));
       }
       const { refreshtoken, accesstoken } =
-        await generateRefreshAndAccessTokens(user._id);
-      user.refreshTokens = [...newRefreshTokenArray, refreshtoken];
-      await user.save({ validateBeforeSave: false });
+        await generateRefreshAndAccessTokens(usr._id);
+      usr.refreshTokens = [...newRefreshTokenArray, refreshtoken];
+      await usr.save({ validateBeforeSave: false });
+      const loggedInUser = await User.findById(usr._id).select(
+        "-password -refreshTokens -resetPasswordToken -resetPasswordTokenExpiry -createdAt -updatedAt"
+      );
       return (
         res
           .status(200)
           // .cookie("accessToken", accesstoken, accesstokenOptions)
           .cookie("refreshToken", refreshtoken, refreshtokenOptions)
-          .json(new ApiResponse(200, { accesstoken }, "Access Token Refreshed"))
+          .json(new ApiResponse(200, {
+            accesstoken,
+            user: loggedInUser
+            }, "Access Token Refreshed"))
       );
     }
   );
@@ -257,7 +294,7 @@ const loggOutUser = asyncHandler(async (req, res) => {
         )
       );
   }
-  const refreshToken = cookies.refreshToken;
+  const refreshToken = cookies?.refreshToken;
   const foundUser = await User.findOne({ refreshTokens: refreshToken }).exec();
   if (!foundUser) {
     return res
@@ -342,7 +379,7 @@ const verifyEmailByOtp = asyncHandler(async (req, res) => {
       .status(400)
       .json(new ApiError(400, "Invalid Otp or otp is used"));
   }
-  await User.findOneAndUpdate({ email }, { isVerified: true },{new:true});
+  await User.findOneAndUpdate({ email }, { isVerified: true,role:["user"] },{new:true});
   await Otp.deleteMany({ email });
   return res
     .status(200)
