@@ -44,18 +44,18 @@ const canSendPasswordResetLink = async (userId) => {
 const sendForgetPasswordLink = asyncHandler(async (req, res) => {
   const { email } = req.body;
   if (!email) {
-    return res.status(400).json(new ApiError(400, "email is required"));
+    throw new ApiError(400, "email is required")
   }
   if (!validateEmail(email)) {
-    return res.status(407).json(new ApiError(407, "email is not valid"));
+    throw new ApiError(407, "email is not valid")
   }
   const checkUserPresent = await User.findOne({ email });
   if(!checkUserPresent){
-    return res.status(400).json(new ApiError(400, "User not found"))
+    throw new ApiError(400, "User not found")
   }
   const canSndPwdResetLnk =await canSendPasswordResetLink(checkUserPresent._id)
   if(!canSndPwdResetLnk){
-    return res.status(407).json(new ApiError(407, "You have reached maximum limit of sending password Reset Link please try again after 24 hours"));
+    throw new ApiError(407, "You have reached maximum limit of sending password Reset Link please try again after 24 hours")
   }
   let resetPasswordToken;
   let user

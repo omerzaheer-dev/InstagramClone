@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { mailSender } from "../utils/mailSender.js";
+import { ApiError } from "../utils/ApiError.js";
 import otpTemplate from "../mail/templates/emailVerificationTemplate.js";
 
 const OtpSchema = new mongoose.Schema({
@@ -31,7 +32,7 @@ async function sendVerificationEmail(email, otp) {
       otpTemplate(otp, otpVerificationLink)
     );
   } catch (error) {
-    throw error;
+    throw new ApiError(400, "something went wrong while sending verification email")
   }
 }
 

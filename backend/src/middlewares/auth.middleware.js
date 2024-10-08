@@ -9,7 +9,7 @@ const jwtVerify = async (req, res, next) => {
       req?.headers?.Authorization?.replace("Bearer ", "");
       // req?.cookies?.accessToken;
     if (!Token) {
-      return res.status(401).json(new ApiError(401, "Token not available"));
+      throw new ApiError(401, "Token not available")
     }
     jwt.verify(Token, process.env.ACCESS_TOKEN_SECRET, async (err, decoded) => {
       if (err) {
@@ -19,26 +19,24 @@ const jwtVerify = async (req, res, next) => {
         "-password -refreshTokens"
       );
       if (!user) {
-        return res.status(403).json(new ApiError(403, "Token is expired"));
+        throw new ApiError(403, "Token is expired")
       }
       req.user = user;
       next();
     });
   } catch (error) {
-    return res
-      .status(409)
-      .json(new ApiError(409, `invalid access token ${error}`));
+    throw new ApiError(409, `invalid access token ${error}`)
   }
 };
 const IsAdmin = async (req, res, next) => {
   try {
     const userRole = req.user.role;
     if (!userRole || !userRole.includes("admin")) {
-      return res.status(409).json(new ApiError(409, "User Role is not Admin"));
+      throw new ApiError(409, "User Role is not Admin")
     }
     next();
   } catch (error) {
-    return res.status(401).json(new ApiError(401, "something went wrong"));
+    throw new ApiError(401, "something went wrong")
   }
 };
 export { jwtVerify, IsAdmin };

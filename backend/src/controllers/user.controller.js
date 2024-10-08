@@ -23,36 +23,25 @@ const registerUser = asyncHandler(async (req, res) => {
       (field) => field?.trim() === ""
     )
   ) {
-    return res.status(409).json(new ApiError(400, "All fields are required"));
+    throw new ApiError(409, "All fields are required")
   }
   if (!validateEmail(email)) {
-    return res.status(407).json(new ApiError(407, "email is not valid"));
+    throw new ApiError(407, "email is not valid")
   }
   if (!validateUserName(username)) {
-    return res.status(407).json(new ApiError(407, "username is not valid"));
+    throw new ApiError(407, "username is not valid")
   }
 
   if (password !== confirmPassword) {
-    return res
-      .status(405)
-      .json(new ApiError(405, "Password and confirmPassword dosent match"));
+    throw new ApiError(405, "Password and confirmPassword dosent match")
   }
 
   if (!password || password.length < 8) {
-    return res
-      .status(401)
-      .json(new ApiError(401, "Password must be at least 8 characters long"));
+    throw new ApiError(401, "Password must be at least 8 characters long")
   }
 
   if (!validatePassword(password)) {
-    return res
-      .status(406)
-      .json(
-        new ApiError(
-          406,
-          "password contains at least one special character and number also"
-        )
-      );
+    throw new ApiError(406, "password contains at least one special character and number also")
   }
 
   const existedUser = await User.findOne({
@@ -60,9 +49,7 @@ const registerUser = asyncHandler(async (req, res) => {
   });
 
   if (existedUser) {
-    return res
-      .status(409)
-      .json(new ApiError(409, "User with email or username already exists"));
+    throw new ApiError(409, "User with email or username already exists")
   }
 
   const user = await User.create({
@@ -74,9 +61,7 @@ const registerUser = asyncHandler(async (req, res) => {
   const createdUser = await User.findById(user._id).select("-createdAt -updatedAt -password -refreshTokens -resetPasswordToken -resetPasswordTokenExpiry");
 
   if (!createdUser) {
-    return res
-      .status(500)
-      .json(new ApiError(500, "Somthing went wrong while registering user"));
+    throw new ApiError(500, "Somthing went wrong while registering user")
   }
 
 
@@ -85,7 +70,7 @@ const registerUser = asyncHandler(async (req, res) => {
   );
   const Usr = await User.findById(createdUser?._id);
   if (!Usr) {
-    return res.status(404).json(new ApiError(404, "User doesnot exist "));
+    throw new ApiError(404, "User doesnot exist")
   }
   if (req?.cookies?.refreshToken) {
     const foundToken = await User.findOne({
@@ -118,49 +103,36 @@ const registerUser = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
   const { emailUsername, password } = req.body;
   if (!emailUsername || !password) {
-    return res
-      .status(400)
-      .json(new ApiError(400, "username and email is required"));
+    throw new ApiError(400, "username and email is required")
   }
   if (!validateEmail(emailUsername) && !validateUserName(emailUsername)) {
-    return res
-      .status(401)
-      .json(new ApiError(401, "Invalid email or username format"));
+    throw new ApiError(401, "Invalid email or username format")
   }
   const user = await User.findOne({
     $or: [{ email: emailUsername }, { username: emailUsername }],
   });
   if (!user) {
-    return res.status(402).json(new ApiError(402, "User doesnot exist "));
+    throw new ApiError(402, "User doesnot exist ")
   }
   // if (!user.isVerified) {
   //   return res.status(404).json(new ApiError(404, "User is not verified"));
   // }
   if (!password || password.length < 8) {
-    return res
-      .status(401)
-      .json(new ApiError(401, "Password must be at least 8 characters long"));
+    throw new ApiError(401, "Password must be at least 8 characters long")
   }
   if (!validatePassword(password)) {
-    return res
-      .status(408)
-      .json(
-        new ApiError(
-          408,
-          "password contains at least one special character and number also"
-        )
-      );
+    throw new ApiError(408, "password contains at least one special character and number also")
   }
   const ValidatePassword = await user.isPasswordValid(password);
   if (!ValidatePassword) {
-    return res.status(403).json(new ApiError(403, "Invalid User Cradentials"));
+    throw new ApiError(403, "Invalid User Cradentials")
   }
   const { refreshtoken, accesstoken } = await generateRefreshAndAccessTokens(
     user?._id
   );
   const Usr = await User.findById(user?._id);
   if (!Usr) {
-    return res.status(404).json(new ApiError(404, "User doesnot exist "));
+    throw new ApiError(404, "User doesnot exist ")
   }
   let RefreshTokenArray = !req?.cookies?.refreshToken
     ? Usr.refreshTokens
@@ -200,7 +172,7 @@ const loginUser = asyncHandler(async (req, res) => {
 const refreshAccessToken = asyncHandler(async (req, res) => {
   const incommingRefreshToken = req?.cookies?.refreshToken;
   if (!incommingRefreshToken) {
-    return res.status(401).json(new ApiError(401, "No refresh token"));
+    throw new ApiError(401, "No refresh token")
   }
   // res.clearCookie("accessToken", accesstokenOptions);
   res.clearCookie("refreshToken", refreshtokenOptions);
@@ -215,9 +187,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         if (err) return res.sendStatus(403);
         const hackedUser = await User.findById(decoded?._id).exec();
         if (!hackedUser) {
-          return res
-            .status(401)
-            .json(new ApiError(401, "Invalid refresh token"));
+          throw new ApiError(401, "Invalid refresh token")
         }
         hackedUser.refreshTokens = [];
         await hackedUser.save({ validateBeforeSave: false });
@@ -241,12 +211,10 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       }
       const usr = await User.findById(decoded?._id);
       if (!usr) {
-        return res.status(401).json(new ApiError(401, "Invalid refresh token"));
+        throw new ApiError(401, "Invalid refresh token")
       }
       if (!usr.refreshTokens.includes(incommingRefreshToken)) {
-        return res
-          .status(401)
-          .json(new ApiError(401, "Refresh token is expired or used"));
+        throw new ApiError(401, "Refresh token is expired or used")
       }
       const { refreshtoken, accesstoken } =
         await generateRefreshAndAccessTokens(usr._id);
@@ -274,7 +242,7 @@ const loggedInUser = asyncHandler(async (req, res) => {
     "-password -refreshTokens"
   );
   if (!loginUser) {
-    return res.status(400).json(new ApiError(400, "user is not available"));
+    throw new ApiError(400, "user is not available")
   }
   return res
     .status(200)
@@ -307,9 +275,7 @@ const loggOutUser = asyncHandler(async (req, res) => {
   );
   const result = await foundUser.save({ validateBeforeSave: false });
   if (!result) {
-    return res
-      .status(401)
-      .json(new ApiError(401, "Something went wrong while logging out"));
+    throw new ApiError(401, "Something went wrong while logging out")
   }
   return res
     .status(200)
@@ -319,14 +285,10 @@ const loggOutUser = asyncHandler(async (req, res) => {
 const changeCurrentPassword = asyncHandler(async (req, res) => {
   const { oldPassword, newPassword, confirmPassword } = req.body;
   if (!oldPassword || !newPassword || !confirmPassword) {
-    return res.status(400).json(new ApiError(400, "All fields are required"));
+    throw new ApiError(400, "All fields are required")
   }
   if (newPassword !== confirmPassword) {
-    return res
-      .status(401)
-      .json(
-        new ApiError(401, "new password and confirm password does not match")
-      );
+    throw new ApiError(401, "new password and confirm password does not match")
   }
   if (
     oldPassword.length < 8 ||
@@ -336,15 +298,15 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
     confirmPassword.length < 8 ||
     !validatePassword(confirmPassword)
   ) {
-    return res.status(401).json(new ApiError(401, "Somethin is wrong"));
+    throw new ApiError(401, "Somethin is wrong")
   }
   const user = await User.findById(req?.user?._id);
   const ValidateOldPassword = await user.isPasswordValid(oldPassword);
   if (!ValidateOldPassword) {
-    return res.status(400).json(new ApiError(400, "invalid oldPassword"));
+    throw new ApiError(400, "invalid oldPassword")
   }
   if (newPassword===oldPassword) {
-    return res.status(401).json(new ApiError(401, "New Password cannot be the same as previous one"));
+    throw new ApiError(401, "New Password cannot be the same as previous one")
   }
   user.password = newPassword;
   await user.save({ validateBeforeSave: false });
@@ -355,29 +317,21 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 const verifyEmailByOtp = asyncHandler(async (req, res) => {
   const { email, otp } = req.body;
   if (!email || !otp) {
-    return res.status(400).json(new ApiError(400, "Email and otp is required"));
+    throw new ApiError(400, "Email and otp is required")
   }
   if (!validateOtp(otp)) {
-    return res
-      .status(400)
-      .json(new ApiError(400, "OTP must be a 4-digit number"));
+    throw new ApiError(400, "OTP must be a 4-digit number")
   }
   const user = await User.findOne({ email });
   if (!user || user?.isVerified === true) {
-    return res
-      .status(400)
-      .json(new ApiError(400, "User doesnot exist or already verified"));
+    throw new ApiError(400, "User doesnot exist or already verified")
   }
   const OtpModel = await Otp.find({ email }).sort({ createdAt: -1 }).limit(1);
   if (OtpModel.length === 0 || !OtpModel) {
-    return res
-      .status(400)
-      .json(new ApiError(400, "Otp doesnot exist in database"));
+    throw new ApiError(400, "Otp doesnot exist in database")
   }
   if (OtpModel[0].otp !== otp || OtpModel[0].used === true) {
-    return res
-      .status(400)
-      .json(new ApiError(400, "Invalid Otp or otp is used"));
+    throw new ApiError(400, "Invalid Otp or otp is used")
   }
   await User.findOneAndUpdate({ email }, { isVerified: true,role:["user"] },{new:true});
   await Otp.deleteMany({ email });
@@ -388,41 +342,29 @@ const verifyEmailByOtp = asyncHandler(async (req, res) => {
 const resetPasswordByVerificationLink = asyncHandler(async (req, res) => {
   const { password, confirmPassword, resetPasswordToken } = req.body;
   if (!password || !confirmPassword || !resetPasswordToken) {
-    return res.status(400).json(new ApiError(400, "All fields are required"));
+    throw new ApiError(400, "All fields are required")
   }
   if (password !== confirmPassword) {
-    return res
-      .status(401)
-      .json(
-        new ApiError(401, "password and confirm password does not match")
-      );
+    throw new ApiError(401, "password and confirm password does not match")
   }
   if (password.length < 8 || !validatePassword(password)) {
-    return res
-      .status(401)
-      .json(
-        new ApiError(401, "password not valid")
-      );
+    throw new ApiError(401, "password not valid")
   }
   if (confirmPassword.length < 8 || !validatePassword(confirmPassword)) {
-    return res.status(401).json(new ApiError(401, "confirm psaaword not valid"));
+    throw new ApiError(401, "confirm psaaword not valid")
   }
   const userDetails = await User.findOne({resetPasswordToken});
   console.log("userDetails",userDetails)
   if (!userDetails) {
-    return res
-      .status(400)
-      .json(new ApiError(400, "User doesnot exist"));
+    throw new ApiError(400, "User doesnot exist")
   }
   const currentTime = Date.now();
   if (currentTime > userDetails.resetPasswordTokenExpiry) {
-    return res
-      .status(400)
-      .json(new ApiError(400, "reset password link has been expired"));
+    throw new ApiError(400, "reset password link has been expired")
   }
   const ValidatePassword = await userDetails.isPasswordValid(password);
   if (ValidatePassword) {
-    return res.status(401).json(new ApiError(401, "Password cannot be the same as previous one"));
+    throw new ApiError(401, "Password cannot be the same as previous one")
   }
   userDetails.password=password;
   userDetails.resetPasswordToken="";

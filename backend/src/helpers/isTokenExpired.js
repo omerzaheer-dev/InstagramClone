@@ -9,9 +9,7 @@ const isTokenExpire = async (token) => {
     const currentTime = Date.now() / 1000;
     return decodedToken.exp < currentTime;
   } catch (error) {
-    return res
-      .status(407)
-      .json(new ApiError(407, "error while token decoding"));
+    throw new ApiError(407, "error while token decoding")
   }
 };
 export default isTokenExpire;

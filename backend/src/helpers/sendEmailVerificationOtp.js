@@ -46,20 +46,18 @@ const canSendOtp = async (userId) => {
 const sendEmailVerificationOtp = asyncHandler(async (req, res) => {
   const { email } = req.body;
   if (!email) {
-    return res.status(400).json(new ApiError(400, "email is required"));
+    throw new ApiError(400, "email is required")
   }
   if (!validateEmail(email)) {
-    return res.status(407).json(new ApiError(407, "email is not valid"));
+    throw new ApiError(407, "email is not valid")
   }
   const checkUserPresent = await User.findOne({ email });
   if (!checkUserPresent || checkUserPresent.isVerified === true) {
-    return res
-      .status(400)
-      .json(new ApiError(400, "no user found or user is verified"));
+    throw new ApiError(400, "no user found or user is verified")
   }
   const canSndOtp =await canSendOtp(checkUserPresent._id)
   if(!canSndOtp){
-    return res.status(407).json(new ApiError(407, "You have reached maximum limit of sending OTP please try again after 24 hours"));
+    throw new ApiError(407, "You have reached maximum limit of sending OTP please try again after 24 hours")
   }
   let otp = Math.floor(1000 + Math.random() * 9000);
   while (!validateOtp(otp)) {
@@ -82,7 +80,7 @@ const sendEmailVerificationOtp = asyncHandler(async (req, res) => {
     otp,
   });
   if (!otpModel) {
-    return res.status(400).json(new ApiError(400, "otp model not created"));
+    throw new ApiError(400, "otp model not created")
   }
   return res
     .status(200)

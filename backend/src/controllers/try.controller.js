@@ -7,9 +7,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 const returnUsers = asyncHandler(async (req,res)=>{
     const users = await User.find();
     if(!users){
-    return res
-      .status(400)
-      .json(new ApiError(400, "no user found"));
+      throw new ApiError(401, "user not found")
     }
     return res
     .status(200)
