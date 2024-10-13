@@ -1,0 +1,17 @@
+SALT = 10
+CORS_ORIGIN = http://localhost:3000
+MONGODB_URI = mongostring
+PORT = 8080
+ACCESS_TOKEN_SECRET = asasasasasadadadadadadadadagak973@8ojo*$guijo
+REFRESH_TOKEN_SECRET = asasasasasadadadadadadadadagak973@8ojo*$guijo
+ACCESS_TOKEN_EXPIRY = 15m
+REFRESH_TOKEN_EXPIRY = 1d
+
+MAIL_HOST = smtp.gmail.com
+MAIL_USER = nextjs16@gmail.com
+MAIL_PASS = aeserxrf6
+MAIL_PORT = 587
+
+CLOUD_NAME = aguigioooi
+API_KEY = aygygugiogiou
+API_SECRET = fyufyufyufuyfyu

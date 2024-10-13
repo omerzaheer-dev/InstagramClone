@@ -4,15 +4,10 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
 
-const returnUsers = asyncHandler(async (req,res)=>{
-    const users = await User.find();
-    if(!users){
-      throw new ApiError(401, "user not found")
-    }
-    return res
-    .status(200)
-    .json(new ApiResponse(200,users,"User registered successfully"));
+const returnUsers = asyncHandler(async (req, res) => {
+  const coverImageLocalPath = req.files.profilePicture[0].path
+  console.log("coverImageLocalPath", coverImageLocalPath)
 })
 export {
-    returnUsers
+  returnUsers
 }

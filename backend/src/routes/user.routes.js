@@ -11,10 +11,16 @@ import {
 import { jwtVerify } from "../middlewares/auth.middleware.js";
 import sendEmailVerificationOtp from "../helpers/sendEmailVerificationOtp.js";
 import sendForgetPasswordLink from "../helpers/sendForgetPasswordLink.js";
+import { upload } from "../middlewares/multer.middleware.js";
 
 const router = Router();
 
-router.route("/register").post(registerUser);
+router.route("/register").post(upload.fields([
+  {
+    name: "profilePicture",
+    maxCount: 1
+  },
+]), registerUser);
 router.route("/login").post(loginUser);
 router.route("/refresh-token").get(refreshAccessToken);
 router.route("/get-user-profile").get(jwtVerify, loggedInUser);

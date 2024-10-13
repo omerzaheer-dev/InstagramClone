@@ -15,15 +15,15 @@ import {
 } from "../utils/AccessRefreshTokenOptions.js";
 import jwt from "jsonwebtoken";
 import { Otp } from "../models/otp.model.js";
-
+import { uploadOnCloudinary } from "../utils/cloudinary.js"
 const registerUser = asyncHandler(async (req, res) => {
-  const { username, email, password, confirmPassword } = req.body;
+  const { username, email, fullName, gender, bio, password, confirmPassword } = req.body;
   if (
-    [email, username, password, confirmPassword].some(
+    [email, username, password, confirmPassword, fullName, gender].some(
       (field) => field?.trim() === ""
     )
   ) {
-    throw new ApiError(409, "All fields are required")
+    throw new ApiError(409, "All fields are required except bio use can add it later")
   }
   if (!validateEmail(email)) {
     throw new ApiError(407, "email is not valid")
@@ -41,7 +41,7 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   if (!validatePassword(password)) {
-    throw new ApiError(406, "password contains at least one special character and number also")
+    throw new ApiError(406, "password contains at least one special character capital letter and number also")
   }
 
   const existedUser = await User.findOne({
@@ -51,10 +51,25 @@ const registerUser = asyncHandler(async (req, res) => {
   if (existedUser) {
     throw new ApiError(409, "User with email or username already exists")
   }
-
+  if (gender !== "male" && gender !== "female") {
+    throw new ApiError(408, "gender can be male or female only")
+  }
+  let profilePictureLocalPath;
+  if (req.files && Array.isArray(req.files.profilePicture) && req.files.profilePicture.length > 0) {
+    profilePictureLocalPath = req.files.profilePicture[0]?.path;
+  }
+  const profilePicture = await uploadOnCloudinary(profilePictureLocalPath, "profiles");
   const user = await User.create({
+    fullName,
+    bio,
+    gender,
+    profilePicture: profilePicture?.secure_url || "",
     email,
     password,
+    followers: [],
+    following: [],
+    posts: [],
+    bookmarks: [],
     username: username.toLowerCase(),
   });
 
@@ -77,7 +92,7 @@ const registerUser = asyncHandler(async (req, res) => {
       refreshTokens: req?.cookies?.refreshToken,
     }).exec();
     if (foundToken) {
-      let RefreshTokenArray=foundToken.refreshTokens.filter((rt) => rt !== req?.cookies?.refreshToken);
+      let RefreshTokenArray = foundToken.refreshTokens.filter((rt) => rt !== req?.cookies?.refreshToken);
       foundToken.refreshTokens = RefreshTokenArray
       await foundToken.save({ validateBeforeSave: false });
     }
@@ -231,7 +246,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
           .json(new ApiResponse(200, {
             accesstoken,
             user: loggedInUser
-            }, "Access Token Refreshed"))
+          }, "Access Token Refreshed"))
       );
     }
   );
@@ -305,7 +320,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
   if (!ValidateOldPassword) {
     throw new ApiError(400, "invalid oldPassword")
   }
-  if (newPassword===oldPassword) {
+  if (newPassword === oldPassword) {
     throw new ApiError(401, "New Password cannot be the same as previous one")
   }
   user.password = newPassword;
@@ -333,7 +348,7 @@ const verifyEmailByOtp = asyncHandler(async (req, res) => {
   if (OtpModel[0].otp !== otp || OtpModel[0].used === true) {
     throw new ApiError(403, "Invalid Otp or otp is used")
   }
-  await User.findOneAndUpdate({ email }, { isVerified: true,role:["user"] },{new:true});
+  await User.findOneAndUpdate({ email }, { isVerified: true, role: ["user"] }, { new: true });
   await Otp.deleteMany({ email });
   return res
     .status(200)
@@ -353,8 +368,8 @@ const resetPasswordByVerificationLink = asyncHandler(async (req, res) => {
   if (confirmPassword.length < 8 || !validatePassword(confirmPassword)) {
     throw new ApiError(401, "confirm psaaword not valid")
   }
-  const userDetails = await User.findOne({resetPasswordToken});
-  console.log("userDetails",userDetails)
+  const userDetails = await User.findOne({ resetPasswordToken });
+  console.log("userDetails", userDetails)
   if (!userDetails) {
     throw new ApiError(400, "User doesnot exist")
   }
@@ -366,9 +381,9 @@ const resetPasswordByVerificationLink = asyncHandler(async (req, res) => {
   if (ValidatePassword) {
     throw new ApiError(401, "Password cannot be the same as previous one")
   }
-  userDetails.password=password;
-  userDetails.resetPasswordToken="";
-  userDetails.refreshTokens=[];
+  userDetails.password = password;
+  userDetails.resetPasswordToken = "";
+  userDetails.refreshTokens = [];
   await userDetails.save({ validateBeforeSave: false });
   return res
     .status(200)

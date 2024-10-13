@@ -10,6 +10,12 @@ const userSchema = new mongoose.Schema(
       trim: true,
       index: true,
     },
+    fullName: {
+      type: String,
+      required: true,
+      trim: true,
+      index: true,
+    },
     email: {
       type: String,
       required: true,
@@ -17,9 +23,37 @@ const userSchema = new mongoose.Schema(
       trim: true,
       lowercase: true,
     },
+    profilePicture: {
+      type: String,
+      default: "",
+    },
+    gender: {
+      type: String,
+      enum: ["male", "female"],
+    },
+    followers: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User"
+    }],
+    following: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User"
+    }],
+    posts: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Post"
+    }],
+    bookmarks: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Post"
+    }],
+    bio: {
+      type: String,
+      default: "",
+    },
     role: {
       type: [String],
-      enum: ["user", "admin","unverified"],
+      enum: ["user", "admin", "unverified"],
       default: ["unverified"],
     },
     password: {
@@ -33,10 +67,10 @@ const userSchema = new mongoose.Schema(
       default: false,
     },
     refreshTokens: [String],
-    resetPasswordToken:{
+    resetPasswordToken: {
       type: String,
     },
-    resetPasswordTokenExpiry:{
+    resetPasswordTokenExpiry: {
       type: Date,
     }
   },

@@ -1,1 +1,1 @@
-export const DB_NAME = "EAuth";
+export const DB_NAME = "InstagramClone";
