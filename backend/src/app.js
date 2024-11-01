@@ -18,10 +18,14 @@ app.use(express.static(__dirname + "/public"));
 app.use(cookieParser());
 
 import userRoutes from "./routes/user.routes.js";
+import postRoutes from "./routes/post.routes.js"
+import messageRoutes from "./routes/message.routes.js"
 import tryRoutes from "./routes/try.routes.js"
 //routes decelaration
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/try", tryRoutes);
+app.use("/api/v1/posts", postRoutes);
+app.use("/api/v1/messages", messageRoutes);
 
 app.get("/", (req, res) => {
   res.send("Hello World!");

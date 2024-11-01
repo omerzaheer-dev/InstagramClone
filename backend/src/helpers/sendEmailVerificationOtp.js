@@ -24,19 +24,19 @@ const canSendOtp = async (userId) => {
     });
     return true;
   }
-  if(maxLimitModel.otpRequestsTimestamp.length>=otpLimit){
+  if (maxLimitModel.otpRequestsTimestamp.length >= otpLimit) {
     const now = new Date();
     const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const oneMinAgo = new Date(now.getTime() - 1 * 60 * 1000);
     const lastOtpTimestamps = maxLimitModel.otpRequestsTimestamp.slice(-otpLimit);
-    if(isWithinSame24Hours(lastOtpTimestamps) && oneDayAgo<=lastOtpTimestamps[otpLimit-1]){
+    if (isWithinSame24Hours(lastOtpTimestamps) && oneDayAgo <= lastOtpTimestamps[otpLimit - 1]) {
       return false;
-    }else{
+    } else {
       maxLimitModel.otpRequestsTimestamp.push(new Date());
       await maxLimitModel.save();
       return true;
     }
-  }else{
+  } else {
     maxLimitModel.otpRequestsTimestamp.push(new Date());
     await maxLimitModel.save();
     return true;
@@ -51,12 +51,15 @@ const sendEmailVerificationOtp = asyncHandler(async (req, res) => {
   if (!validateEmail(email)) {
     throw new ApiError(407, "email is not valid")
   }
+  if (email !== req.user.email) {
+    throw new ApiError(400, "email not match")
+  }
   const checkUserPresent = await User.findOne({ email });
   if (!checkUserPresent || checkUserPresent.isVerified === true) {
     throw new ApiError(400, "no user found or user is verified")
   }
-  const canSndOtp =await canSendOtp(checkUserPresent._id)
-  if(!canSndOtp){
+  const canSndOtp = await canSendOtp(checkUserPresent._id)
+  if (!canSndOtp) {
     throw new ApiError(407, "You have reached maximum limit of sending OTP please try again after 24 hours")
   }
   let otp = Math.floor(1000 + Math.random() * 9000);

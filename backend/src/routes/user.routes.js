@@ -6,7 +6,11 @@ import {
   loggedInUser,
   loggOutUser,
   verifyEmailByOtp,
-  resetPasswordByVerificationLink
+  resetPasswordByVerificationLink,
+  editProfile,
+  getProfile,
+  changeCurrentPassword,
+  followOrUnfollowUser
 } from "../controllers/user.controller.js";
 import { jwtVerify } from "../middlewares/auth.middleware.js";
 import sendEmailVerificationOtp from "../helpers/sendEmailVerificationOtp.js";
@@ -24,10 +28,19 @@ router.route("/register").post(upload.fields([
 router.route("/login").post(loginUser);
 router.route("/refresh-token").get(refreshAccessToken);
 router.route("/get-user-profile").get(jwtVerify, loggedInUser);
+router.route("/change-current-password").post(jwtVerify, changeCurrentPassword);
 router.route("/log-out-user").get(loggOutUser);
-router.route("/send-otp-email").post(sendEmailVerificationOtp);
-router.route("/verify-email-otp").post(verifyEmailByOtp);
+router.route("/send-otp-email").post(jwtVerify, sendEmailVerificationOtp);
+router.route("/verify-email-otp").post(jwtVerify, verifyEmailByOtp);
 router.route("/forgot-password-email").post(sendForgetPasswordLink);
 router.route("/reset-password-by-link").patch(resetPasswordByVerificationLink);
 
+router.route("/:_id/profile").get(getProfile);
+router.route("/:_id/follow-or-unfollow").post(jwtVerify, followOrUnfollowUser);
+router.route("/profile/edit").post(jwtVerify, upload.fields([
+  {
+    name: "profilePicture",
+    maxCount: 1
+  },
+]), editProfile);
 export default router;

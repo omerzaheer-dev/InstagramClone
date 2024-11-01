@@ -20,7 +20,7 @@ root.render(
   // <React.StrictMode>
     <StyledEngineProvider injectFirst>
       <BrowserRouter>
-      <AuthProvider>
+      
         <Routes>
           <Route path="/*" element={<App />} />
         </Routes>

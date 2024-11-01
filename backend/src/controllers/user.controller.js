@@ -15,9 +15,10 @@ import {
 } from "../utils/AccessRefreshTokenOptions.js";
 import jwt from "jsonwebtoken";
 import { Otp } from "../models/otp.model.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js"
+import { deleteImageByPublicId, uploadOnCloudinary } from "../utils/cloudinary.js"
+import { extractPublicId } from "cloudinary-build-url"
 const registerUser = asyncHandler(async (req, res) => {
-  const { username, email, fullName, gender, bio, password, confirmPassword } = req.body;
+  const { username, email, fullName, gender, bio, password, confirmPassword } = req.body.data;
   if (
     [email, username, password, confirmPassword, fullName, gender].some(
       (field) => field?.trim() === ""
@@ -116,7 +117,7 @@ const registerUser = asyncHandler(async (req, res) => {
 });
 
 const loginUser = asyncHandler(async (req, res) => {
-  const { emailUsername, password } = req.body;
+  const { emailUsername, password } = req.body.data;
   if (!emailUsername || !password) {
     throw new ApiError(400, "username and email is required")
   }
@@ -127,13 +128,13 @@ const loginUser = asyncHandler(async (req, res) => {
     $or: [{ email: emailUsername }, { username: emailUsername }],
   });
   if (!user) {
-    throw new ApiError(402, "User doesnot exist ")
+    throw new ApiError(402, "User doesnot exist")
   }
   // if (!user.isVerified) {
   //   return res.status(404).json(new ApiError(404, "User is not verified"));
   // }
   if (!password || password.length < 8) {
-    throw new ApiError(401, "Password must be at least 8 characters long")
+    throw new ApiError(403, "Password must be at least 8 characters long")
   }
   if (!validatePassword(password)) {
     throw new ApiError(408, "password contains at least one special character and number also")
@@ -163,7 +164,7 @@ const loginUser = asyncHandler(async (req, res) => {
   }
   Usr.refreshTokens = [...RefreshTokenArray, refreshtoken];
   await Usr.save({ validateBeforeSave: false });
-  const loggedInUser = await User.findById(Usr?._id).select(
+  const loggedInUser = await User.findById(Usr?._id).populate({ path: "posts", sort: { createdAt: -1 } }).select(
     "-password -refreshTokens -resetPasswordToken -resetPasswordTokenExpiry -createdAt -updatedAt"
   );
   return (
@@ -316,6 +317,9 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
     throw new ApiError(401, "Somethin is wrong")
   }
   const user = await User.findById(req?.user?._id);
+  if (!user) {
+    throw new ApiError(400, "user not present")
+  }
   const ValidateOldPassword = await user.isPasswordValid(oldPassword);
   if (!ValidateOldPassword) {
     throw new ApiError(400, "invalid oldPassword")
@@ -334,6 +338,10 @@ const verifyEmailByOtp = asyncHandler(async (req, res) => {
   if (!email || !otp) {
     throw new ApiError(400, "Email and otp is required")
   }
+  if (email !== req.user.email) {
+    throw new ApiError(400, "Something went wrong")
+  }
+
   if (!validateOtp(otp)) {
     throw new ApiError(400, "OTP must be a 4-digit number")
   }
@@ -389,6 +397,95 @@ const resetPasswordByVerificationLink = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, {}, "Password reset successful"));
 });
+
+const getProfile = asyncHandler(async (req, res) => {
+  const { _id } = req.params;
+  if (!_id) {
+    throw new ApiError(400, "user is not logged in")
+  }
+  const user = await User.findById(_id).select(
+    "-password -refreshTokens -resetPasswordToken -resetPasswordTokenExpiry -createdAt -updatedAt"
+  );
+  if (!user) {
+    throw new ApiError(401, "user is not available")
+  }
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "user profile returned"));
+});
+const editProfile = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  if (!_id) {
+    throw new ApiError(400, "Id is required to get profile")
+  }
+  const { gender, bio } = req.body
+  let profilePictureLocalPath;
+  if (req.files && Array.isArray(req.files.profilePicture) && req.files.profilePicture.length > 0) {
+    profilePictureLocalPath = req.files.profilePicture[0]?.path;
+  }
+  const profilePicture = await uploadOnCloudinary(profilePictureLocalPath, "profiles");
+  const user = await User.findById(_id).select(
+    "-password -refreshTokens -resetPasswordToken -resetPasswordTokenExpiry -createdAt -updatedAt"
+  );
+  if (!user) {
+    throw new ApiError(401, "user is not available")
+  }
+  if (gender) user.gender = gender;
+  if (bio) user.bio = bio;
+  if (profilePictureLocalPath) {
+    if (user.profilePicture !== "") {
+      const publicId = extractPublicId(user.profilePicture);
+      const deleteCloudinary = await deleteImageByPublicId(publicId);
+      if (!deleteCloudinary) {
+        throw new ApiError(402, "previous image not deleated")
+      } else {
+        user.profilePicture = profilePicture?.secure_url;
+      }
+    } else {
+      user.profilePicture = profilePicture?.secure_url;
+    }
+  }
+  await user.save();
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "user details edited"));
+});
+const getSuggestedUsers = asyncHandler(async (req, res) => {
+  const suggestedUsers = await User.find({ _id: { $ne: req.user._id }, isVerified: true });
+  if (!suggestedUsers) {
+    throw new ApiError(400, "no suggesed users")
+  }
+  return res
+    .status(200)
+    .json(new ApiResponse(200, suggestedUsers, "all suggested users"));
+});
+const followOrUnfollowUser = asyncHandler(async (req, res) => {
+  const loggedInUser = req.user._id
+  const userToBeFollowed = req.params._id
+  if (loggedInUser === userToBeFollowed) {
+    throw new ApiError(400, "you cannot follow to your self")
+  }
+  const user = await User.findById(loggedInUser);
+  const targetUser = await User.findById(userToBeFollowed);
+  if (!user || !targetUser) {
+    throw new ApiError(400, "something is wrong either no user or target user to follow or unfollow")
+  }
+  const isFollowing = user.following.includes(userToBeFollowed);
+  if (!isFollowing) {
+    await User.findOneAndUpdate({ _id: loggedInUser }, { $push: { following: userToBeFollowed } });
+    await User.findOneAndUpdate({ _id: userToBeFollowed }, { $push: { followers: loggedInUser } });
+    return res
+      .status(200)
+      .json(new ApiResponse(200, {}, "user followed successfully"));
+  } else {
+    await User.findOneAndUpdate({ _id: loggedInUser }, { $pull: { following: userToBeFollowed } });
+    await User.findOneAndUpdate({ _id: userToBeFollowed }, { $pull: { followers: loggedInUser } });
+    return res
+      .status(200)
+      .json(new ApiResponse(200, {}, "user unfollowed successfully"));
+  }
+});
 export {
   registerUser,
   loginUser,
@@ -397,5 +494,9 @@ export {
   loggOutUser,
   changeCurrentPassword,
   verifyEmailByOtp,
-  resetPasswordByVerificationLink
+  resetPasswordByVerificationLink,
+  getProfile,
+  editProfile,
+  getSuggestedUsers,
+  followOrUnfollowUser
 };
