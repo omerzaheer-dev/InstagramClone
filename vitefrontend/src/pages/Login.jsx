@@ -1,5 +1,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod"
+import { Loader2 } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { Button } from "@/components/ui/button"
@@ -9,10 +10,10 @@ import {
 import Inp from "@/comps/Inp"
 import { useState } from "react"
 import axios from "../api/axios"
-import { Link } from "react-router-dom"
+import { Link, useLocation, useNavigate } from "react-router-dom"
 import PasswordInput from "../comps/PasswordInput"
-import { useDispatch } from 'react-redux'
-import { setAuthUser } from "../redux/authSlice"
+import useSendOtpEmail from "@/hooks/useSendOtpEmail"
+import useAuth from "@/hooks/useAuth"
 
 const usernameRegex = /^[a-z](?!.*[_.]{2})[a-z0-9._]{2,29}$/;
 const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -46,8 +47,13 @@ const FormSchema = z.object({
 })
 
 const Login = () => {
-    const dispatch = useDispatch()
+    const { setAuth, auth } = useAuth()
+    const sendOtp = useSendOtpEmail();
+    const location = useLocation()
+    const navigate = useNavigate()
+    let from = location?.state?.from?.pathname || "/";
     const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
     const form = useForm({
         resolver: zodResolver(FormSchema),
         defaultValues: {
@@ -56,6 +62,7 @@ const Login = () => {
         },
     })
     const onSubmit = async (data) => {
+        setLoading(true);
         try {
             setError("")
             const response = await axios.post('/api/v1/users/login',
@@ -68,18 +75,16 @@ const Login = () => {
             )
             console.log("aaa", response)
             const accesstoken = response?.data?.data?.accesstoken;
-            const { username, role, isVerified, email, _id } = response?.data?.data?.user;
-            const user = {
-                accesstoken, username, role, isVerified, email, _id
-
+            const { username, role, isVerified, email, _id, profilePicture, fullName } = response?.data?.data?.user;
+            setAuth({ accesstoken, username, role, isVerified, email, _id, profilePicture, fullName })
+            if (!isVerified) {
+                from = "/unverified"
+                await sendOtp(email);
             }
-            dispatch(setAuthUser(user))
-/* eslint-disable react/prop-types */
-
-            // setAuth({ username, role, isVerified, email, accesstoken, _id })
-            // await sendOtp(email)
-            // navigate("/unverified")
+            setLoading(false);
+            navigate(from, { replace: true })
         } catch (error) {
+            setLoading(false);
             if (!error.response) {
                 setError("no server response")
             }
@@ -110,7 +115,10 @@ const Login = () => {
                             <Inp label={"Email or Username"} placeholder={"emailUsername"} control={form.control} />
                             <PasswordInput label={"Password"} placeholder={"password"} control={form.control} />
                         </div>
-                        <Button className="w-full" type="submit">Login</Button>
+                        <Button className="w-full" type="submit">
+                            Login
+                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        </Button>
                         <p className="text-center mt-2 mr-[3px]">
                             <blockquote className="mt-2 border-l-2 pl-6 leading-7 [&:not(:first-child)]:mt-6">
                                 Create a new account <Link to={"/register"} className=" cursor-pointer text-[#c13584] font-semibold">Signup</Link>

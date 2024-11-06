@@ -3,7 +3,6 @@ import mongoose from "mongoose";
 const PostSchema = new mongoose.Schema({
     caption: {
         type: String,
-        required: true,
         trim: true,
         index: true,
     },

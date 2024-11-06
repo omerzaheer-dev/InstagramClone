@@ -18,7 +18,7 @@ import { Otp } from "../models/otp.model.js";
 import { deleteImageByPublicId, uploadOnCloudinary } from "../utils/cloudinary.js"
 import { extractPublicId } from "cloudinary-build-url"
 const registerUser = asyncHandler(async (req, res) => {
-  const { username, email, fullName, gender, bio, password, confirmPassword } = req.body.data;
+  const { username, email, fullName, gender, bio, password, confirmPassword } = req.body;
   if (
     [email, username, password, confirmPassword, fullName, gender].some(
       (field) => field?.trim() === ""
@@ -60,6 +60,9 @@ const registerUser = asyncHandler(async (req, res) => {
     profilePictureLocalPath = req.files.profilePicture[0]?.path;
   }
   const profilePicture = await uploadOnCloudinary(profilePictureLocalPath, "profiles");
+  if (!profilePicture?.secure_url) {
+    throw new ApiError(409, "Error uploading image")
+  }
   const user = await User.create({
     fullName,
     bio,
@@ -200,6 +203,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       incommingRefreshToken,
       process.env.REFRESH_TOKEN_SECRET,
       async (err, decoded) => {
+        console.log("n")
         if (err) return res.sendStatus(403);
         const hackedUser = await User.findById(decoded?._id).exec();
         if (!hackedUser) {
@@ -209,6 +213,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         await hackedUser.save({ validateBeforeSave: false });
       }
     );
+    console.log("fty")
     return res.sendStatus(403);
   }
   const newRefreshTokenArray = foundUser.refreshTokens.filter(
@@ -242,7 +247,6 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       return (
         res
           .status(200)
-          // .cookie("accessToken", accesstoken, accesstokenOptions)
           .cookie("refreshToken", refreshtoken, refreshtokenOptions)
           .json(new ApiResponse(200, {
             accesstoken,

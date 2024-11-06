@@ -4,7 +4,8 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { Button } from "@/components/ui/button"
 import instagramsvg from "../assets/instagram.svg"
-import { Link } from "react-router-dom"
+import { Link, useLocation, useNavigate } from "react-router-dom"
+import { Loader2 } from "lucide-react"
 
 import {
     Form,
@@ -14,6 +15,8 @@ import Sel from "@/comps/Sel"
 import { useState } from "react"
 import axios from "../api/axios"
 import PasswordInput from "@/comps/PasswordInput"
+import useSendOtpEmail from "@/hooks/useSendOtpEmail"
+import useAuth from "@/hooks/useAuth"
 
 const usernameRegex = /^[a-z](?!.*[_.]{2})[a-z0-9._]{2,29}$/;
 const uppercase = /(?=.*[A-Z])/;
@@ -56,6 +59,13 @@ const FormSchema = z.object({
 });
 
 const SignUp = () => {
+    const { setAuth, auth } = useAuth()
+    const [loading, setLoading] = useState(false);
+    const sendOtp = useSendOtpEmail();
+    const location = useLocation()
+    let from = location?.state?.from?.pathname || "/";
+    const navigate = useNavigate()
+
     const [files, setFiles] = useState(null);
     const [profile, setProfile] = useState(null);
     const [fileError, setFileError] = useState(false);
@@ -86,26 +96,45 @@ const SignUp = () => {
     }
     const onSubmit = async (data) => {
         if (profile) {
+            console.log("pro", profile)
+            setLoading(true);
             setFileError(false);
-            console.log("dat", data);
             try {
                 setError("")
+                const formData = new FormData();
+                const data = {
+                    username: form.getValues('username'),
+                    email: form.getValues('email'),
+                    fullName: form.getValues('fullName'),
+                    gender: form.getValues('gender'),
+                    bio: form.getValues('bio'),
+                    password: form.getValues('password'),
+                    confirmPassword: form.getValues('confirmPassword')
+                };
+
+                Object.keys(data).forEach(key => {
+                    formData.append(key, data[key]);
+                });
+
+                if (profile) {
+                    formData.append('profilePicture', profile);
+                }
+                console.log(formData.entries());
                 const response = await axios.post('/api/v1/users/register',
-                    JSON.stringify({
-                        data,
-                        profilePicture: profile
-                    }), {
-                    headers: { 'Content-Type': 'application/json' },
+                    formData, {
+                    headers: { 'Content-Type': 'multipart/form-data', },
                     withCredentials: true
                 }
                 )
                 console.log("aaa", response)
-                // const accesstoken = response?.data?.data?.accesstoken;
-                // const { username, role, isVerified, email, _id } = response?.data?.data?.user;
-                // setAuth({ username, role, isVerified, email, accesstoken, _id })
-                // await sendOtp(email)
-                // navigate("/unverified")
+                const accesstoken = response?.data?.data?.accesstoken;
+                const { username, role, isVerified, email, _id, profilePicture, fullName } = response?.data?.data?.user;
+                setAuth({ username, role, isVerified, email, accesstoken, _id, profilePicture, fullName })
+                await sendOtp(email)
+                setLoading(false);
+                navigate("/unverified")
             } catch (error) {
+                setLoading(false);
                 if (!error.response) {
                     setError("no server response")
                 } else if (error.response.status === 409) {
@@ -164,7 +193,9 @@ const SignUp = () => {
                             <PasswordInput label={"Password"} placeholder={"password"} control={form.control} />
                             <PasswordInput label={"Confirm Password"} placeholder={"confirmPassword"} control={form.control} />
                         </div>
-                        <Button className="w-full" type="submit" onClick={subm}>SignUp</Button>
+                        <Button className="w-full" type="submit" onClick={subm}>SignUp
+                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        </Button>
                         <p className="text-center mt-2 mr-[3px]">
                             <blockquote className="mt-2 border-l-2 pl-6 leading-7 [&:not(:first-child)]:mt-6">
                                 Already have an account <Link to={"/login"} className=" cursor-pointer text-[#c13584] font-semibold">SignIn</Link>

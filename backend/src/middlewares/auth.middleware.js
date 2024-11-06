@@ -4,12 +4,10 @@ import jwt from "jsonwebtoken";
 
 const jwtVerify = async (req, res, next) => {
   try {
-    const Token =
-      req?.headers?.authorization?.replace("Bearer ", "") ||
-      req?.headers?.Authorization?.replace("Bearer ", "");
-      // req?.cookies?.accessToken;
+    const Token = req?.headers?.Authorization?.replace("Bearer ", "") || req?.headers?.authorization?.replace("Bearer ", "");
+    // req?.cookies?.accessToken;
     if (!Token) {
-      throw new ApiError(401, "Token not available")
+      throw new ApiError(401, "Token not available");
     }
     jwt.verify(Token, process.env.ACCESS_TOKEN_SECRET, async (err, decoded) => {
       if (err) {
@@ -19,13 +17,14 @@ const jwtVerify = async (req, res, next) => {
         "-password -refreshTokens"
       );
       if (!user) {
-        throw new ApiError(403, "Token is expired")
+        throw new ApiError(403, "Token is expired");
       }
       req.user = user;
       next();
-    });
+    })
   } catch (error) {
-    throw new ApiError(409, `invalid access token ${error}`)
+    console.log(error)
+    throw new ApiError(409, 'invalid access token')
   }
 };
 const IsAdmin = async (req, res, next) => {

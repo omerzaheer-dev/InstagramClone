@@ -6,11 +6,11 @@ import SignUp from "./pages/SignUp";
 // import Admin from "./pages/Admin";
 // import LinkPage from "./pages/LinkPage";
 // import RequireAuth from "./comps/RequireAuth";
-// import PersistentLogin from "./compos/PersistentLogin"
 import Layout from './comps/Layout';
 import { Routes, Route } from 'react-router-dom';
 import Main from "./pages/Main";
 import Home from "./pages/Home"
+import PersistentLogin from "./comps/PersistentLogin";
 
 function App() {
 
@@ -20,9 +20,10 @@ function App() {
         {/* public routes */}
         <Route path="login" element={<Login />} />
         <Route path="register" element={<SignUp />} />
-
-        <Route element={<Main />}>
-          <Route path="" element={<Home />} />
+        <Route element={<PersistentLogin />}>
+          <Route element={<Main />}>
+            <Route path="" element={<Home />} />
+          </Route>
         </Route>
         {/* <Route path="" element={<LinkPage />} /> */}
         {/* <Route path="unauthorized" element={<Unauthorized />} />

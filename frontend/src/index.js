@@ -11,23 +11,23 @@ import { AuthProvider } from './context/AuthProvider';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
 // if (process.env.NODE_ENV === 'production') {
-  disableReactDevTools();
+disableReactDevTools();
 // }
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
 root.render(
   // <React.StrictMode>
-    <StyledEngineProvider injectFirst>
-      <BrowserRouter>
-      
+  <StyledEngineProvider injectFirst>
+    <BrowserRouter>
+      <AuthProvider>
         <Routes>
           <Route path="/*" element={<App />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
-        {/* <RouterProvider router={router} /> */}
-    </StyledEngineProvider>
+    {/* <RouterProvider router={router} /> */}
+  </StyledEngineProvider>
   // </React.StrictMode>
 );
 reportWebVitals();

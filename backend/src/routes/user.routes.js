@@ -30,7 +30,7 @@ router.route("/refresh-token").get(refreshAccessToken);
 router.route("/get-user-profile").get(jwtVerify, loggedInUser);
 router.route("/change-current-password").post(jwtVerify, changeCurrentPassword);
 router.route("/log-out-user").get(loggOutUser);
-router.route("/send-otp-email").post(jwtVerify, sendEmailVerificationOtp);
+router.route("/send-otp-email").post(sendEmailVerificationOtp);
 router.route("/verify-email-otp").post(jwtVerify, verifyEmailByOtp);
 router.route("/forgot-password-email").post(sendForgetPasswordLink);
 router.route("/reset-password-by-link").patch(resetPasswordByVerificationLink);

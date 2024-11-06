@@ -4,11 +4,12 @@ import useRefreshToken from "./useRefreshToken";
 import useAuth from "./useAuth";
 
 const useAxiosPrivate = () => {
-  const refresh = useRefreshToken()
-  const { auth } = useAuth()
+  const refresh = useRefreshToken();
+  const { auth } = useAuth();
   useEffect(() => {
     const requestInterceptors = axiosPrivate.interceptors.request.use(
       config => {
+        console.log("Request config:", config);
         if (!config.headers["Authorization"]) {
           config.headers['Authorization'] = `Bearer ${auth?.accesstoken}`;
         }

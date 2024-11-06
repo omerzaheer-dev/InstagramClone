@@ -45,14 +45,12 @@ const canSendOtp = async (userId) => {
 }
 const sendEmailVerificationOtp = asyncHandler(async (req, res) => {
   const { email } = req.body;
+  console.log("e", email);
   if (!email) {
     throw new ApiError(400, "email is required")
   }
   if (!validateEmail(email)) {
     throw new ApiError(407, "email is not valid")
-  }
-  if (email !== req.user.email) {
-    throw new ApiError(400, "email not match")
   }
   const checkUserPresent = await User.findOne({ email });
   if (!checkUserPresent || checkUserPresent.isVerified === true) {

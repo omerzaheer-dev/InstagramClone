@@ -13,6 +13,6 @@ const useSendOtpEmail = () => {
             console.log(error);
         }
     }
-  return OtpSend;
+    return OtpSend;
 }
 export default useSendOtpEmail

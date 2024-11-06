@@ -12,16 +12,16 @@ import { fileURLToPath } from "url";
 const addNewPost = asyncHandler(async (req, res) => {
     const { caption } = req.body;
     const authorId = req.user?._id;
-    if (!caption || !authorId) {
-        throw new ApiError(409, "captions are required")
+    if (!authorId) {
+        throw new ApiError(409, "captions are required");
     }
     const postImageLocalPath = req.file;
     if (!postImageLocalPath) {
-        throw new ApiError(400, "postImageLocalPath is required")
+        throw new ApiError(400, "postImageLocalPath is required");
     }
     const originalNameWithoutExtension = req.file.originalname.split('.')[0];
-    const __filename = fileURLToPath(import.meta.url)
-    const __dirname = path.dirname(__filename)
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
     const dirPath = path.join(__dirname, "../public/temp");
     const outputPath = path.join(dirPath, `${originalNameWithoutExtension}.jpeg`);
     await sharp(postImageLocalPath.buffer)
@@ -30,17 +30,17 @@ const addNewPost = asyncHandler(async (req, res) => {
         .toFile(outputPath);
     const postImage = await uploadOnCloudinary(outputPath, "postImages");
     if (!postImage) {
-        throw new ApiError(400, "postImage file is required")
+        throw new ApiError(400, "postImage file is required");
     }
     const post = await Post.create({
-        caption,
+        caption: caption || "",
         image: postImage?.secure_url,
         author: authorId,
         comments: [],
         likes: []
     });
     if (!post) {
-        throw new ApiError(400, "post is not saved")
+        throw new ApiError(400, "post is not saved");
     }
     const updateResult = await User.findOneAndUpdate(
         { _id: authorId },
@@ -48,7 +48,7 @@ const addNewPost = asyncHandler(async (req, res) => {
         { new: true }
     );
     if (!updateResult) {
-        throw new ApiError(400, "post not saved to user profile")
+        throw new ApiError(400, "post not saved to user profile");
     }
     await post.populate({ path: "author", select: "-password -bio -role -bookmarks -gender -followers -following -isVerified -refreshTokens -resetPasswordToken -resetPasswordTokenExpiry -createdAt -updatedAt" })
     return res
