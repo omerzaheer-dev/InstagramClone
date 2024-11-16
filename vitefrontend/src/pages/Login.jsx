@@ -8,12 +8,14 @@ import {
     Form,
 } from "@/components/ui/form"
 import Inp from "@/comps/Inp"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import axios from "../api/axios"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import PasswordInput from "../comps/PasswordInput"
 import useSendOtpEmail from "@/hooks/useSendOtpEmail"
 import useAuth from "@/hooks/useAuth"
+import { useDispatch } from "react-redux"
+import { reset } from "@/redux/postSlice"
 
 const usernameRegex = /^[a-z](?!.*[_.]{2})[a-z0-9._]{2,29}$/;
 const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -47,6 +49,7 @@ const FormSchema = z.object({
 })
 
 const Login = () => {
+    const dispatch = useDispatch();
     const { setAuth, auth } = useAuth()
     const sendOtp = useSendOtpEmail();
     const location = useLocation()
@@ -73,10 +76,11 @@ const Login = () => {
                 withCredentials: true
             }
             )
-            console.log("aaa", response)
+            dispatch(reset());
             const accesstoken = response?.data?.data?.accesstoken;
-            const { username, role, isVerified, email, _id, profilePicture, fullName } = response?.data?.data?.user;
-            setAuth({ accesstoken, username, role, isVerified, email, _id, profilePicture, fullName })
+            // const { following } = response?.data?.data?.user;
+            const { username, role, isVerified, email, following, _id, profilePicture, fullName } = response?.data?.data?.user;
+            setAuth({ following, accesstoken, username, role, isVerified, following, email, _id, profilePicture, fullName, })
             if (!isVerified) {
                 from = "/unverified"
                 await sendOtp(email);

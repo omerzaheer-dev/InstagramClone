@@ -17,6 +17,8 @@ import axios from "../api/axios"
 import PasswordInput from "@/comps/PasswordInput"
 import useSendOtpEmail from "@/hooks/useSendOtpEmail"
 import useAuth from "@/hooks/useAuth"
+import { useDispatch } from "react-redux"
+import { reset } from "@/redux/postSlice"
 
 const usernameRegex = /^[a-z](?!.*[_.]{2})[a-z0-9._]{2,29}$/;
 const uppercase = /(?=.*[A-Z])/;
@@ -59,6 +61,7 @@ const FormSchema = z.object({
 });
 
 const SignUp = () => {
+    const dispatch = useDispatch();
     const { setAuth, auth } = useAuth()
     const [loading, setLoading] = useState(false);
     const sendOtp = useSendOtpEmail();
@@ -126,10 +129,10 @@ const SignUp = () => {
                     withCredentials: true
                 }
                 )
-                console.log("aaa", response)
+                dispatch(reset());
                 const accesstoken = response?.data?.data?.accesstoken;
                 const { username, role, isVerified, email, _id, profilePicture, fullName } = response?.data?.data?.user;
-                setAuth({ username, role, isVerified, email, accesstoken, _id, profilePicture, fullName })
+                setAuth({ username, role, isVerified, email, "following": response?.data?.data?.user?.following, accesstoken, _id, profilePicture, fullName })
                 await sendOtp(email)
                 setLoading(false);
                 navigate("/unverified")

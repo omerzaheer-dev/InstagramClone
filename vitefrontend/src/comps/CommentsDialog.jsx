@@ -11,14 +11,14 @@ import {
 import CommentPostInput from "./commentPostInput"
 import MultipleComments from "./MultipleComments"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-
-export default function CommentsDialog({ text, username, profile }) {
+import "../index.css"
+export default function CommentsDialog({ text, username, profile, postId }) {
     return (
         <Dialog>
             <DialogTrigger asChild>
                 {text}
             </DialogTrigger>
-            <DialogContent className="lg:max-w-[55%] max-w-[100%] overflow-y-scroll max-h-[80%] rounded-t-xl min-h-[80%] top-[101%] md:top-[98%] translate-y-[-100%]">
+            <DialogContent className="lg:max-w-[55%] example max-w-[100%] overflow-y-scroll max-h-[80%] rounded-t-xl min-h-[80%] top-[101%] md:top-[98%] translate-y-[-100%]">
                 <div className="relative">
                     <div className="mb-7 min-h-[83%]">
                         <DialogHeader>
@@ -40,12 +40,12 @@ export default function CommentsDialog({ text, username, profile }) {
                             </DialogDescription>
                         </DialogHeader>
                         <div className="h-auto">
-                            <MultipleComments />
+                            <MultipleComments postId={postId} />
                         </div>
                     </div>
                     <DialogFooter className="sm:justify-center items-center sm:space-x-0 pb-7 pt-2 sticky min-w-[100%] w-auto rounded-b-xl max-w-[100%] left-0 bg-white -bottom-10">
                         <div className="max-w-[100%] min-w-[100%] h-full px-1 mx-auto pt-[1px]">
-                            <CommentPostInput />
+                            <CommentPostInput postId={postId} />
                         </div>
                     </DialogFooter>
                 </div>

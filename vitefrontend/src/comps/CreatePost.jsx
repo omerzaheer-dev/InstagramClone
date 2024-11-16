@@ -13,10 +13,14 @@ import useAuth from "@/hooks/useAuth"
 import { useRef, useState } from "react"
 import useAxiosPrivate from "@/hooks/useAxiosPrivate"
 import { useToast } from "@/hooks/use-toast"
+import { useDispatch, useSelector } from "react-redux"
+import { setHasmore, setPosts } from "@/redux/postSlice"
 
 
 
 export function CreatePost({ open, setOpen }) {
+    const dispatch = useDispatch()
+    const { posts } = useSelector(store => store.post);
     const { toast } = useToast();
     const [loading, setLoading] = useState(false)
     const axiosPrivate = useAxiosPrivate();
@@ -41,7 +45,7 @@ export function CreatePost({ open, setOpen }) {
         }
 
         const formData = new FormData();
-        formData.append("caption", caption);
+        formData.append("caption", caption.trim());
         formData.append("postImage", file);
         try {
             const response = await axiosPrivate.post('/api/v1/posts/add-new-post',
@@ -54,6 +58,7 @@ export function CreatePost({ open, setOpen }) {
                 }
             );
             if (response.data.data) {
+                dispatch(setPosts([response.data.data, ...posts]));
                 toast({
                     title: "Post added Successfully",
                     description: "You can now view your post",

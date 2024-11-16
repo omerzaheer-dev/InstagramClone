@@ -38,7 +38,7 @@ const MobileSidebar = () => {
   ]
   return (
     <div>
-      <div className='w-[100vw] md:px-6 px-2 py-[1px] border-t-[2px] lg:w-0 lg:static fixed bottom-0 flex items-center justify-between bg-white z-50'>
+      <div className='w-[100vw] lg:hidden md:px-6 px-2 py-[1px] border-t-[2px] lg:w-0 lg:static fixed bottom-0 flex items-center justify-between bg-white z-50'>
         {
           sidebarItems.map((item, index) => {
             return (

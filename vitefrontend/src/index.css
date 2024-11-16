@@ -68,3 +68,14 @@
     @apply bg-background text-foreground;
   }
 }
+
+.example::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  background: transparent;
+}
+
+.example {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

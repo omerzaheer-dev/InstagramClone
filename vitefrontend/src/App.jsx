@@ -11,9 +11,11 @@ import { Routes, Route } from 'react-router-dom';
 import Main from "./pages/Main";
 import Home from "./pages/Home"
 import PersistentLogin from "./comps/PersistentLogin";
+import { useGetAllPosts } from "./hooks/useGetAllPosts";
+import Profile from "./pages/Profile";
 
 function App() {
-
+  const getAllPosts = useGetAllPosts();
   return (
     <Routes>
       <Route path="/" element={<Layout />}>
@@ -24,6 +26,7 @@ function App() {
           <Route element={<Main />}>
             <Route path="" element={<Home />} />
           </Route>
+          <Route path="profile/:userId" element={<Profile />} />
         </Route>
         {/* <Route path="" element={<LinkPage />} /> */}
         {/* <Route path="unauthorized" element={<Unauthorized />} />

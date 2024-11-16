@@ -403,7 +403,9 @@ const resetPasswordByVerificationLink = asyncHandler(async (req, res) => {
 });
 
 const getProfile = asyncHandler(async (req, res) => {
+  console.log("gft")
   const { _id } = req.params;
+  console.log(_id, "gf")
   if (!_id) {
     throw new ApiError(400, "user is not logged in")
   }
@@ -456,7 +458,17 @@ const editProfile = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, user, "user details edited"));
 });
 const getSuggestedUsers = asyncHandler(async (req, res) => {
-  const suggestedUsers = await User.find({ _id: { $ne: req.user._id }, isVerified: true });
+  let suggestedUsers;
+  const userId = req?.query?.id;
+  if (userId) {
+    suggestedUsers = await User.find({
+      _id: { $ne: userId }
+      // , isVerified: true 
+    });
+  }
+  else {
+    suggestedUsers = await User.find({});
+  }
   if (!suggestedUsers) {
     throw new ApiError(400, "no suggesed users")
   }
@@ -465,9 +477,9 @@ const getSuggestedUsers = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, suggestedUsers, "all suggested users"));
 });
 const followOrUnfollowUser = asyncHandler(async (req, res) => {
-  const loggedInUser = req.user._id
+  const loggedInUser = req?.user?._id;
   const userToBeFollowed = req.params._id
-  if (loggedInUser === userToBeFollowed) {
+  if (loggedInUser.toString() === userToBeFollowed) {
     throw new ApiError(400, "you cannot follow to your self")
   }
   const user = await User.findById(loggedInUser);
@@ -481,13 +493,13 @@ const followOrUnfollowUser = asyncHandler(async (req, res) => {
     await User.findOneAndUpdate({ _id: userToBeFollowed }, { $push: { followers: loggedInUser } });
     return res
       .status(200)
-      .json(new ApiResponse(200, {}, "user followed successfully"));
+      .json(new ApiResponse(200, { type: "followed" }, "user followed successfully"));
   } else {
     await User.findOneAndUpdate({ _id: loggedInUser }, { $pull: { following: userToBeFollowed } });
     await User.findOneAndUpdate({ _id: userToBeFollowed }, { $pull: { followers: loggedInUser } });
     return res
       .status(200)
-      .json(new ApiResponse(200, {}, "user unfollowed successfully"));
+      .json(new ApiResponse(200, { type: "unfollowed" }, "user unfollowed successfully"));
   }
 });
 export {

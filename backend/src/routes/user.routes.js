@@ -10,7 +10,8 @@ import {
   editProfile,
   getProfile,
   changeCurrentPassword,
-  followOrUnfollowUser
+  followOrUnfollowUser,
+  getSuggestedUsers
 } from "../controllers/user.controller.js";
 import { jwtVerify } from "../middlewares/auth.middleware.js";
 import sendEmailVerificationOtp from "../helpers/sendEmailVerificationOtp.js";
@@ -26,6 +27,7 @@ router.route("/register").post(upload.fields([
   },
 ]), registerUser);
 router.route("/login").post(loginUser);
+router.route("/get-suggested-users").get(getSuggestedUsers);
 router.route("/refresh-token").get(refreshAccessToken);
 router.route("/get-user-profile").get(jwtVerify, loggedInUser);
 router.route("/change-current-password").post(jwtVerify, changeCurrentPassword);

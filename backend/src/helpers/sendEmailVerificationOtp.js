@@ -45,7 +45,6 @@ const canSendOtp = async (userId) => {
 }
 const sendEmailVerificationOtp = asyncHandler(async (req, res) => {
   const { email } = req.body;
-  console.log("e", email);
   if (!email) {
     throw new ApiError(400, "email is required")
   }

@@ -4,10 +4,12 @@ import { Comment } from "../models/comment.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js"
+import { deleteImageByPublicId, uploadOnCloudinary } from "../utils/cloudinary.js"
 import sharp from "sharp"
 import path from "path";
 import { fileURLToPath } from "url";
+import mongoose from "mongoose";
+import { extractPublicId } from "cloudinary-build-url";
 
 const addNewPost = asyncHandler(async (req, res) => {
     const { caption } = req.body;
@@ -32,13 +34,17 @@ const addNewPost = asyncHandler(async (req, res) => {
     if (!postImage) {
         throw new ApiError(400, "postImage file is required");
     }
-    const post = await Post.create({
+    await Post.create({
         caption: caption || "",
         image: postImage?.secure_url,
         author: authorId,
         comments: [],
         likes: []
     });
+    const post = await Post.findOne({
+        image: postImage?.secure_url,
+        author: authorId,
+    }).populate({ path: "author", select: "username profilePicture" });
     if (!post) {
         throw new ApiError(400, "post is not saved");
     }
@@ -50,23 +56,27 @@ const addNewPost = asyncHandler(async (req, res) => {
     if (!updateResult) {
         throw new ApiError(400, "post not saved to user profile");
     }
-    await post.populate({ path: "author", select: "-password -bio -role -bookmarks -gender -followers -following -isVerified -refreshTokens -resetPasswordToken -resetPasswordTokenExpiry -createdAt -updatedAt" })
+    // await post.populate({ path: "author", select: "-password -bio -role -bookmarks -gender -followers -following -isVerified -refreshTokens -resetPasswordToken -resetPasswordTokenExpiry -createdAt -updatedAt" })
     return res
         .status(200)
         .json(new ApiResponse(200, post, "User registered successfully"));
 });
 const getAllPosts = asyncHandler(async (req, res) => {
-    const posts = await Post.find().sort({ createdAt: -1 })
+    const { page, pageSize } = req.body;
+    const skip = (page - 1) * pageSize;
+    const postLength = await Post.countDocuments();
+    const posts = await Post.find()
+        .skip(skip)
+        .sort({ createdAt: -1 })
+        .limit(pageSize)
         .populate({ path: "author", select: "username profilePicture" })
-        .populate({ path: "comments", sort: { createdAt: -1 }, populate: { path: "author", select: "username profilePicture" } })
-    if (!posts) {
-        return res
-            .status(200)
-            .json(new ApiResponse(200, { posts: [] }, "no post uploaded"));
+    if (!posts || posts.length === 0) {
+        return res.status(200).json(new ApiResponse(200, { posts: [], hasMorePosts: false }, "No posts uploaded"));
     }
+    const hasMorePosts = postLength > (skip + posts.length);
     return res
         .status(200)
-        .json(new ApiResponse(200, posts, "User registered successfully"));
+        .json(new ApiResponse(200, { posts, hasMorePosts }, "posts are here"));
 });
 const getUserPosts = asyncHandler(async (req, res) => {
     const { _id } = req?.user;
@@ -99,22 +109,31 @@ const likeDislikePosts = asyncHandler(async (req, res) => {
         throw new ApiError(401, "post not found");
     }
     if (post.likes.includes(_id)) {
-        post.likes = post.likes.filter(pid => pid !== _id);
-        await post.save();
+        await Post.findByIdAndUpdate(
+            postId,
+            { $pull: { likes: _id } },
+            { new: true }
+        );
         return res
             .status(200)
-            .json(new ApiResponse(200, { type: "disliked" }, "User registered successfully"));
+            .json(new ApiResponse(200, { type: "disliked" }, "User disliked post"));
 
-    } else {
-        post.likes.push(_id);
-        await post.save();
-        return res
-            .status(200)
-            .json(new ApiResponse(200, { type: "liked" }, "User registered successfully"));
     }
+    await Post.findOneAndUpdate(
+        { _id: postId },
+        {
+            $addToSet: { likes: _id },
+        },
+        {
+            new: true,
+        }
+    );
+    return res
+        .status(200)
+        .json(new ApiResponse(200, { type: "liked" }, "User liked post"));
 });
 const addComment = asyncHandler(async (req, res) => {
-    const { _id } = req.user;
+    const { _id } = req?.user;
     if (!_id) {
         throw new ApiError(401, "User not logged in");
     }
@@ -127,19 +146,30 @@ const addComment = asyncHandler(async (req, res) => {
     if (!post) {
         throw new ApiError(403, "post not found");
     }
-    const comment = await Comment.create({
+    await Comment.create({
         text,
         author: _id,
         post: postId
-    }).populate({ path: "comments", populate: { path: "author", select: "username profilePicture" } })
+    })
+    const comment = await Comment.find({
+        text,
+        author: _id,
+        post: postId
+    }).populate({ path: "author", select: "username profilePicture" }).exec();
     if (!comment) {
         throw new ApiError(404, "comment ot created");
     }
-    post.comments.push(comment?._id);
+    const updatedPost = await Post.findByIdAndUpdate(
+        postId,
+        {
+            $push: { comments: new mongoose.Types.ObjectId(comment._id) }
+        },
+        { new: true }
+    );
     await post.save();
     return res
         .status(200)
-        .json(new ApiResponse(200, post, "User registered successfully"));
+        .json(new ApiResponse(200, comment, "User registered successfully"));
 });
 const getPostComments = asyncHandler(async (req, res) => {
     const { postId } = req.params;
@@ -150,7 +180,7 @@ const getPostComments = asyncHandler(async (req, res) => {
     if (!post) {
         throw new ApiError(402, "post not found");
     }
-    const comments = await Comment.find({ post: postId }).populate('author', 'profilePicture username');
+    const comments = await Comment.find({ post: postId }).sort({ createdAt: -1 }).populate({ path: "author", select: "username profilePicture" });
     if (!comments) {
         return res
             .status(200)
@@ -158,7 +188,7 @@ const getPostComments = asyncHandler(async (req, res) => {
     }
     return res
         .status(200)
-        .json(new ApiResponse(200, post, "User registered successfully"));
+        .json(new ApiResponse(200, comments, "User registered successfully"));
 });
 const deletePost = asyncHandler(async (req, res) => {
     const { postId } = req.params;
@@ -173,8 +203,13 @@ const deletePost = asyncHandler(async (req, res) => {
     if (!_id) {
         throw new ApiError(402, "user not logged in");
     }
-    if (post?.author.toString() !== _id) {
+    if (post?.author.toString() !== _id.toString()) {
         throw new ApiError(402, "only owner can delete this post");
+    }
+    const publicId = extractPublicId(post.image);
+    const deleteCloudinary = await deleteImageByPublicId(publicId);
+    if (!deleteCloudinary) {
+        throw new ApiError(402, "previous image not deleated")
     }
     const user = await User.findById(_id);
     if (!user) {
