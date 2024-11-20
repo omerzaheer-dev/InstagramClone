@@ -19,10 +19,12 @@ import CommentsDialog from "./CommentsDialog";
 import useAuth from "@/hooks/useAuth";
 import { useDeletePost } from "@/hooks/useDeletePost";
 import { useLikeDislikePost } from "@/hooks/useLikeDislikePost";
+import { useBookmarkPosts } from "@/hooks/useBookmarkPosts";
 const Post = ({ username, post, profile, captions, postId, commentsLength, likes, authorId }) => {
     const { auth } = useAuth();
     const deletePost = useDeletePost()
     const likesCount = likes.length;
+    const BookmarkPosts = useBookmarkPosts();
     const likeDislikePost = useLikeDislikePost()
     const [showCaption, setShowCaption] = useState(false)
     const maxChars = 100;
@@ -74,7 +76,7 @@ const Post = ({ username, post, profile, captions, postId, commentsLength, likes
             </div>
             <div className="flex items-start justify-between text-[24px] px-2 pt-3 lg:max-w-[75%] max-w-[100%] text-slate-900 lg:mx-auto hover:bg-slate-50">
                 <div className="flex items-center justify-center gap-7">
-                    <div onClick={() => { likeDislikePost(postId) }}>
+                    <div onClick={async () => { await likeDislikePost(postId) }}>
                         {
                             auth._id ? likes.includes(auth._id) ? <FaHeart className="cursor-pointer text-red-700" /> : <FaRegHeart className="cursor-pointer" /> : <FaRegHeart className="cursor-pointer" />
                         }
@@ -86,8 +88,11 @@ const Post = ({ username, post, profile, captions, postId, commentsLength, likes
                         <FaRegPaperPlane className="cursor-pointer" />
                     </div>
                 </div>
-                <div>
-                    <FaRegBookmark className="cursor-pointer text-" />
+                <div onClick={async () => { await BookmarkPosts(postId) }}>
+                    {
+                        auth._id ? auth.bookmarks.includes(postId) ? <FaBookmark className="cursor-pointer" /> : <FaRegBookmark className="cursor-pointer" /> :
+                            <FaRegBookmark className="cursor-pointer" />
+                    }
                 </div>
             </div>
             <div className="px-2 pt-[3px] lg:max-w-[75%] w-auto max-w-[100%] text-slate-900 lg:mx-auto ">

@@ -10,14 +10,14 @@ const MobileSidebar = () => {
   const { auth } = useAuth()
   const navigate = useNavigate();
   const sidebarHandler = async (itemText) => {
-    if (itemText === "Home") { navigate('/home') }
+    if (itemText === "Home") { navigate('/') }
     else if (itemText === "Search") { navigate("/search") }
     else if (itemText === "Create") { setOpen(true); }
     else if (itemText === "Notifications") { navigate("/notifications") }
     else if (itemText === "Create") { auth._id ? setOpen(true) : navigate("/login"); }
     else {
       if (itemText === "Profile") {
-        auth._id ? navigate("/profile") : navigate("/login")
+        auth._id ? navigate(`/profile/${auth?._id}`) : navigate("/login")
       }
     }
   };

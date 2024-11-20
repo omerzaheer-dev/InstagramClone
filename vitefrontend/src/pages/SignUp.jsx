@@ -131,8 +131,8 @@ const SignUp = () => {
                 )
                 dispatch(reset());
                 const accesstoken = response?.data?.data?.accesstoken;
-                const { username, role, isVerified, email, _id, profilePicture, fullName } = response?.data?.data?.user;
-                setAuth({ username, role, isVerified, email, "following": response?.data?.data?.user?.following, accesstoken, _id, profilePicture, fullName })
+                const { username, role, isVerified, email, _id, profilePicture, fullName, bookmarks, bio, gender } = response?.data?.data?.user;
+                setAuth({ username, role, isVerified, bookmarks, email, bio, gender, "following": response?.data?.data?.user?.following, accesstoken, _id, profilePicture, fullName })
                 await sendOtp(email)
                 setLoading(false);
                 navigate("/unverified")

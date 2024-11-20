@@ -12,13 +12,13 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-const Sel = ({ control, placeholder, label, name }) => {
+const Sel = ({ control, placeholder, label, name, className = "" }) => {
     return (
         <FormField
             control={control}
             name={name}
             render={({ field }) => (
-                <FormItem>
+                <FormItem className={className}>
                     <FormLabel>{label}</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
@@ -29,12 +29,6 @@ const Sel = ({ control, placeholder, label, name }) => {
                         <SelectContent>
                             <SelectItem value="male">Male</SelectItem>
                             <SelectItem value="female">Female</SelectItem>
-                            <SelectItem value="gay">Gay</SelectItem>
-                            <SelectItem value="transgender">Transgender</SelectItem>
-                            <SelectItem value="bisexual">Bisexual</SelectItem>
-                            <SelectItem value="lesbian">Lesbian</SelectItem>
-                            <SelectItem value="homosexual">Homosexual</SelectItem>
-                            <SelectItem value="lesbian">69 others...</SelectItem>
                         </SelectContent>
                     </Select>
                     <FormMessage />

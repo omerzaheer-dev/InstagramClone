@@ -8,9 +8,9 @@ const useRefreshToken = () => {
             withCredentials: true,
         })
         if (response?.data) {
-            const { username, role, isVerified, email, _id, following, profilePicture, fullName } = response?.data?.data?.user;
+            const { username, role, isVerified, bio, gender, bookmarks, email, _id, following, profilePicture, fullName } = response?.data?.data?.user;
             const { accesstoken } = response?.data?.data;
-            setAuth({ username, role, following, isVerified, email, _id, accesstoken, profilePicture, fullName })
+            setAuth({ username, role, bio, gender, following, isVerified, bookmarks, email, _id, accesstoken, profilePicture, fullName })
             return response?.data?.data?.accesstoken;
         }
     }

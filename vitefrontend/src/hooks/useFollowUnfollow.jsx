@@ -20,14 +20,12 @@ export const useFollowUnfollow = () => {
                     let updatedFollowing;
                     if (response?.data?.data?.type === 'followed') {
                         updatedFollowing = [...auth.following, userId]
-                        console.log("l", updatedFollowing);
                         toast({
                             title: "Followed",
                             description: "User has been Followed",
                         })
                     } else {
                         updatedFollowing = auth.following.filter((us) => us !== userId);
-                        console.log("u", updatedFollowing);
                         toast({
                             title: "Unfollowed",
                             description: "User has been Unfollowed",

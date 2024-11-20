@@ -19,13 +19,13 @@ const Sidebar = () => {
         navigate('/login')
     }
     const sidebarHandler = async (itemText) => {
-        if (itemText === "Home") { navigate('/home') }
+        if (itemText === "Home") { navigate('/') }
         else if (itemText === "Search") { navigate("/search") }
         else if (itemText === "Explore") { navigate("/explore") }
         else if (itemText === "Messages") { navigate("/messages"); console.log("fty", auth) }
         else if (itemText === "Notifications") { navigate("/notifications") }
         else if (itemText === "Create") { auth._id ? setOpen(true) : navigate("/login"); }
-        else if (itemText === "Profile") { auth._id ? navigate("/profile") : navigate("/login") }
+        else if (itemText === "Profile") { auth._id ? navigate(`/profile/${auth?._id}`) : navigate("/login") }
         else {
             if (itemText === "Logout") {
                 await handleLogout()

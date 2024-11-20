@@ -79,8 +79,8 @@ const Login = () => {
             dispatch(reset());
             const accesstoken = response?.data?.data?.accesstoken;
             // const { following } = response?.data?.data?.user;
-            const { username, role, isVerified, email, following, _id, profilePicture, fullName } = response?.data?.data?.user;
-            setAuth({ following, accesstoken, username, role, isVerified, following, email, _id, profilePicture, fullName, })
+            const { username, role, isVerified, email, following, _id, profilePicture, fullName, bookmarks, bio, gender } = response?.data?.data?.user;
+            setAuth({ following, accesstoken, username, bookmarks, role, isVerified, following, email, _id, bio, gender, profilePicture, fullName, })
             if (!isVerified) {
                 from = "/unverified"
                 await sendOtp(email);

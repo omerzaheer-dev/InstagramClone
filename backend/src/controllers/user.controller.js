@@ -213,7 +213,6 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         await hackedUser.save({ validateBeforeSave: false });
       }
     );
-    console.log("fty")
     return res.sendStatus(403);
   }
   const newRefreshTokenArray = foundUser.refreshTokens.filter(
@@ -403,15 +402,13 @@ const resetPasswordByVerificationLink = asyncHandler(async (req, res) => {
 });
 
 const getProfile = asyncHandler(async (req, res) => {
-  console.log("gft")
   const { _id } = req.params;
-  console.log(_id, "gf")
   if (!_id) {
     throw new ApiError(400, "user is not logged in")
   }
   const user = await User.findById(_id).select(
     "-password -refreshTokens -resetPasswordToken -resetPasswordTokenExpiry -createdAt -updatedAt"
-  );
+  ).populate({ path: "posts", sort: { createdAt: -1 } }).populate({ path: "bookmarks", sort: { createdAt: -1 } });
   if (!user) {
     throw new ApiError(401, "user is not available")
   }

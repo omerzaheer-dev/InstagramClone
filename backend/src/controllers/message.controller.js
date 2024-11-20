@@ -55,4 +55,4 @@ const recieveMessages = asyncHandler(async (req, res) => {
         .status(200)
         .json(new ApiResponse(200, { messages: conversation?.messages }, "message sent successfully"));
 })
-export { sendMessage , recieveMessages}
+export { sendMessage, recieveMessages }

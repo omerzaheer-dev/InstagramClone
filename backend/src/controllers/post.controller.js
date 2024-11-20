@@ -241,13 +241,24 @@ const bookMarkPost = asyncHandler(async (req, res) => {
         throw new ApiError(403, "user not found");
     }
     if (user.bookmarks.includes(postId)) {
-        await user.updateOne({ $pull: { bookmarks: postId } })
-        await user.save()
+        await User.findByIdAndUpdate(
+            user?._id,
+            { $pull: { bookmarks: postId } },
+            { new: true }
+        );
         return res
             .status(200)
             .json(new ApiResponse(200, { type: "unsaved" }, "Post removed from bookmark"));
     } else {
-        await user.updateOne({ $addToSet: { bookmarks: postId } })
+        await User.findOneAndUpdate(
+            { _id: user?._id },
+            {
+                $addToSet: { bookmarks: postId },
+            },
+            {
+                new: true,
+            }
+        );
         return res
             .status(200)
             .json(new ApiResponse(200, { type: "saved" }, "Post bookmarked"));

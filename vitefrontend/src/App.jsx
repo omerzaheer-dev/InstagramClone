@@ -13,6 +13,7 @@ import Home from "./pages/Home"
 import PersistentLogin from "./comps/PersistentLogin";
 import { useGetAllPosts } from "./hooks/useGetAllPosts";
 import Profile from "./pages/Profile";
+import EditProfile from "./pages/EditProfile";
 
 function App() {
   const getAllPosts = useGetAllPosts();
@@ -25,8 +26,9 @@ function App() {
         <Route element={<PersistentLogin />}>
           <Route element={<Main />}>
             <Route path="" element={<Home />} />
+            <Route path="profile/:userId" element={<Profile />} />
+            <Route path="profile/edit" element={<EditProfile />} />
           </Route>
-          <Route path="profile/:userId" element={<Profile />} />
         </Route>
         {/* <Route path="" element={<LinkPage />} /> */}
         {/* <Route path="unauthorized" element={<Unauthorized />} />
